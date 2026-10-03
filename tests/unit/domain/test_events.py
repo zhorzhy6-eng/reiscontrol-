@@ -55,7 +55,11 @@ def test_create_event_requires_uuidv7():
 
 def test_event_lifecycle_keeps_prior_versions_unchanged():
     original = draft()
-    accepted = accept_event(uploaded(), received_at_utc=NOW + timedelta(seconds=10))
+    accepted = accept_event(
+        uploaded(),
+        received_at_utc=NOW + timedelta(seconds=10),
+        measured_clock_skew_ms=10_000,
+    )
     assert original.state == "draft"
     assert accepted.state == "accepted"
     assert accepted.time_trust == "high"
@@ -73,5 +77,15 @@ def test_reject_requires_reason_and_can_return_to_draft():
 
 
 def test_large_clock_skew_is_flagged():
-    accepted = accept_event(uploaded(), received_at_utc=NOW + timedelta(minutes=6))
+    accepted = accept_event(
+        uploaded(),
+        received_at_utc=NOW + timedelta(minutes=6),
+        measured_clock_skew_ms=360_000,
+    )
     assert accepted.time_trust == "skewed"
+
+
+def test_delayed_offline_event_has_unknown_clock_trust_without_sample():
+    accepted = accept_event(uploaded(), received_at_utc=NOW + timedelta(days=3))
+    assert accepted.clock_skew_ms is None
+    assert accepted.time_trust == "unknown"

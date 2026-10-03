@@ -16,27 +16,30 @@ from backend.domain.trips import Trip, complete_trip, start_trip
 
 
 def assigned_trip():
-    return Trip(
-        id=uuid4(), order_id=uuid4(), config_snapshot_id=uuid4(), status="assigned"
-    )
+    return Trip(id=uuid4(), order_id=uuid4(), config_snapshot_id=None, status="assigned")
 
 
 def test_trip_start_and_completion_keep_snapshot():
     original = assigned_trip()
-    started = start_trip(original, started_at=datetime.now(timezone.utc))
+    snapshot_id = uuid4()
+    started = start_trip(
+        original, started_at=datetime.now(timezone.utc), config_snapshot_id=snapshot_id
+    )
     completed = complete_trip(started, track_number="  T-123  ")
     assert original.status == "assigned"
     assert completed.status == "pending_logistician"
     assert completed.track_number == "T-123"
-    assert completed.config_snapshot_id == original.config_snapshot_id
+    assert completed.config_snapshot_id == snapshot_id
 
 
 def test_trip_cannot_complete_without_track_number():
-    started = start_trip(assigned_trip(), started_at=datetime.now(timezone.utc))
+    started = start_trip(
+        assigned_trip(), started_at=datetime.now(timezone.utc), config_snapshot_id=uuid4()
+    )
     with pytest.raises(DomainError, match="track_number"):
         complete_trip(started, track_number=" ")
     with pytest.raises(InvalidTransitionError):
-        start_trip(started, started_at=datetime.now(timezone.utc))
+        start_trip(started, started_at=datetime.now(timezone.utc), config_snapshot_id=uuid4())
 
 
 def test_required_steps_use_snapshot_order():

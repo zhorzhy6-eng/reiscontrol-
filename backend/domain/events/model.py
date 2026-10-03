@@ -24,6 +24,12 @@ class Event:
     device_time_utc: datetime | None
     device_tz_offset_min: int | None
     elapsed_realtime_ms: int | None
+    point_id: UUID | None = None
+    cargo_unit_id: UUID | None = None
+    lat: float | None = None
+    lon: float | None = None
+    accuracy_m: int | None = None
+    location_source: str | None = None
     state: EventState = "draft"
     server_time_utc: datetime | None = None
     received_at_utc: datetime | None = None
@@ -44,6 +50,12 @@ def create_event(
     device_time_utc: datetime | None,
     device_tz_offset_min: int | None,
     elapsed_realtime_ms: int | None,
+    point_id: UUID | None = None,
+    cargo_unit_id: UUID | None = None,
+    lat: float | None = None,
+    lon: float | None = None,
+    accuracy_m: int | None = None,
+    location_source: str | None = None,
     corrects_event_id: UUID | None = None,
 ) -> Event:
     """Create a recoverable local draft with a client-generated UUIDv7."""
@@ -53,13 +65,16 @@ def create_event(
         raise DomainError("event_type_code is required")
     if payload_schema_version < 1:
         raise DomainError("payload_schema_version must be positive")
-    if (
-        device_time_utc is not None
-        and device_time_utc.utcoffset() != timezone.utc.utcoffset(None)
-    ):
+    if device_time_utc is not None and device_time_utc.utcoffset() != timezone.utc.utcoffset(None):
         raise DomainError("device_time_utc must be UTC")
     if elapsed_realtime_ms is not None and elapsed_realtime_ms < 0:
         raise DomainError("elapsed_realtime_ms cannot be negative")
+    if lat is not None and not -90 <= lat <= 90:
+        raise DomainError("lat is out of range")
+    if lon is not None and not -180 <= lon <= 180:
+        raise DomainError("lon is out of range")
+    if accuracy_m is not None and accuracy_m < 0:
+        raise DomainError("accuracy_m cannot be negative")
     return Event(
         client_event_id=client_event_id,
         device_id=device_id,
@@ -70,6 +85,12 @@ def create_event(
         device_time_utc=device_time_utc,
         device_tz_offset_min=device_tz_offset_min,
         elapsed_realtime_ms=elapsed_realtime_ms,
+        point_id=point_id,
+        cargo_unit_id=cargo_unit_id,
+        lat=lat,
+        lon=lon,
+        accuracy_m=accuracy_m,
+        location_source=location_source,
         corrects_event_id=corrects_event_id,
     )
 
@@ -85,27 +106,28 @@ def transition_event(event: Event, target: EventState) -> Event:
         "rejected": ("draft",),
     }
     if target not in next_states[event.state]:
-        raise InvalidTransitionError(
-            f"Cannot move event from {event.state} to {target}"
-        )
+        raise InvalidTransitionError(f"Cannot move event from {event.state} to {target}")
     return replace(event, state=target)
 
 
-def accept_event(event: Event, *, received_at_utc: datetime) -> Event:
-    """Accept an uploaded fact and record server and clock evidence."""
+def accept_event(
+    event: Event,
+    *,
+    received_at_utc: datetime,
+    measured_clock_skew_ms: int | None = None,
+) -> Event:
+    """Accept a fact; trust remains unknown without an independent clock sample."""
     accepted = transition_event(event, "accepted")
     if received_at_utc.utcoffset() != timezone.utc.utcoffset(None):
         raise DomainError("received_at_utc must be UTC")
-    skew = None
     trust: TimeTrust = "unknown"
-    if event.device_time_utc is not None:
-        skew = round((received_at_utc - event.device_time_utc).total_seconds() * 1000)
-        trust = "high" if abs(skew) <= 300_000 else "skewed"
+    if measured_clock_skew_ms is not None:
+        trust = "high" if abs(measured_clock_skew_ms) <= 300_000 else "skewed"
     return replace(
         accepted,
         server_time_utc=received_at_utc,
         received_at_utc=received_at_utc,
-        clock_skew_ms=skew,
+        clock_skew_ms=measured_clock_skew_ms,
         time_trust=trust,
     )
 

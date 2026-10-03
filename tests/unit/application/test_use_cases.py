@@ -22,10 +22,13 @@ class FakeUsers:
     def can_access_trip(self, user_id, trip_id):
         return self.allowed
 
+    def can_operate_trip(self, user_id, trip_id):
+        return self.allowed
+
 
 class FakeTrips:
     def __init__(self, status="in_progress"):
-        self.trip = Trip(uuid4(), uuid4(), uuid4(), status)
+        self.trip = Trip(uuid4(), uuid4(), None if status == "assigned" else uuid4(), status)
 
     def get(self, trip_id):
         return self.trip if trip_id == self.trip.id else None
@@ -47,6 +50,11 @@ class FakePolicy:
         return None
 
 
+class FakeSnapshots:
+    def freeze_for_trip(self, trip):
+        return uuid4()
+
+
 class FakeEvents:
     def __init__(self):
         self.saved = None
@@ -55,7 +63,7 @@ class FakeEvents:
     def get_by_client_key(self, client_event_id, device_id):
         return self.saved
 
-    def save_once_with_notification(self, event):
+    def save_once_with_notification(self, event, *, user_id, app_version, platform):
         self.insert_count += 1
         self.saved = StoredEvent(uuid4(), event)
         return self.saved
@@ -86,6 +94,8 @@ def test_submit_event_is_idempotent_and_uses_trip_snapshot():
         "user_id": uuid4(),
         "received_at_utc": NOW,
         "trace_id": str(CLIENT_ID),
+        "app_version": "1.0.0",
+        "platform": "android",
         "events": events,
         "trips": trips,
         "users": users,
@@ -106,6 +116,8 @@ def test_reused_client_key_with_different_payload_fails():
         "user_id": uuid4(),
         "received_at_utc": NOW,
         "trace_id": str(CLIENT_ID),
+        "app_version": "1.0.0",
+        "platform": "android",
         "events": events,
         "trips": trips,
         "users": users,
@@ -136,6 +148,8 @@ def test_unauthorized_trip_cannot_accept_event():
             user_id=uuid4(),
             received_at_utc=NOW,
             trace_id=str(CLIENT_ID),
+            app_version="1.0.0",
+            platform="android",
             events=FakeEvents(),
             trips=trips,
             users=users,
@@ -147,7 +161,12 @@ def test_trip_use_cases_require_access_and_persist_transition():
     trips, users = FakeTrips(status="assigned"), FakeUsers()
     user_id = uuid4()
     started = start_trip_for_user(
-        trips.trip.id, user_id=user_id, started_at=NOW, trips=trips, users=users
+        trips.trip.id,
+        user_id=user_id,
+        started_at=NOW,
+        trips=trips,
+        users=users,
+        snapshots=FakeSnapshots(),
     )
     assert started.status == "in_progress"
     completed = complete_trip_for_user(

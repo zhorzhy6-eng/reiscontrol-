@@ -28,31 +28,35 @@ def submit_event(
     user_id: UUID,
     received_at_utc: datetime,
     trace_id: str,
+    app_version: str,
+    platform: str,
     events: EventRepository,
     trips: TripRepository,
     users: UserRepository,
     configuration: EventConfiguration,
 ) -> StoredEvent:
     """Accept a completed client fact exactly once and enqueue its notification atomically."""
-    if not users.can_access_trip(user_id, event.trip_id):
+    if not users.can_operate_trip(user_id, event.trip_id):
         raise ForbiddenError("Trip access denied")
     trip = trips.get(event.trip_id)
     if trip is None:
         raise NotFoundError("Trip not found")
-    if trip.status != "in_progress":
-        raise ValueError("Trip is not in progress")
-    configuration.validate(event, trip.config_snapshot_id)
     prior = events.get_by_client_key(event.client_event_id, event.device_id)
     if prior is not None:
         if _fingerprint(prior.event) != _fingerprint(event):
             raise IdempotencyConflictError("Client event key was reused")
         return prior
+    if trip.status != "in_progress":
+        raise ValueError("Trip is not in progress")
+    configuration.validate(event, trip.config_snapshot_id)
     if event.state != "complete":
         raise ValueError("Only complete client events can be submitted")
     queued = transition_event(event, "queued")
     uploaded = transition_event(queued, "uploaded")
     accepted = accept_event(uploaded, received_at_utc=received_at_utc)
-    stored = events.save_once_with_notification(accepted)
+    stored = events.save_once_with_notification(
+        accepted, user_id=user_id, app_version=app_version, platform=platform
+    )
     if _fingerprint(stored.event) != _fingerprint(event):
         raise IdempotencyConflictError("Client event key was reused")
     logger.info(
