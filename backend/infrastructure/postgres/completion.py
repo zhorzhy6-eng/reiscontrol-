@@ -1,11 +1,12 @@
 """Snapshot-driven completion checks over accepted immutable events."""
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
+
 from backend.domain.errors import DomainError, IncompleteChecklistError
 from backend.domain.rules.completion import unmet_completion_rules
 from backend.domain.trips import Trip
 from backend.infrastructure.postgres import models as db
-from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
 
 
 def missing_event_requirements(

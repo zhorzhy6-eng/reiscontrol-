@@ -4,8 +4,9 @@ import os
 from logging.config import fileConfig
 
 from alembic import context
-from backend.infrastructure.postgres.models import metadata
 from sqlalchemy import engine_from_config, pool
+
+from backend.infrastructure.postgres.models import metadata
 
 config = context.config
 if config.config_file_name is not None:

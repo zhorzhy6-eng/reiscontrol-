@@ -5,11 +5,12 @@ import os
 import time
 from datetime import datetime, timezone
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
 from backend.apps.api.logging_config import configure_json_logging
 from backend.infrastructure.postgres.outbox import OutboxJob, PostgresOutboxRepository
 from backend.infrastructure.telegram import TelegramDeliveryError, TelegramTransport
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 logger = logging.getLogger(__name__)
 

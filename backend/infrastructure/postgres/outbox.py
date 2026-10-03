@@ -4,10 +4,11 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
-from backend.infrastructure.postgres import models as db
 from sqlalchemy import and_, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, sessionmaker
+
+from backend.infrastructure.postgres import models as db
 
 LEASE_SECONDS = 60
 MAX_RETRIES = 8

@@ -3,9 +3,10 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from backend.infrastructure.postgres import models as db
 from sqlalchemy import insert
 from sqlalchemy.orm import Session, sessionmaker
+
+from backend.infrastructure.postgres import models as db
 
 
 class PostgresDiagnosticRepository:

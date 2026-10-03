@@ -3,11 +3,12 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from backend.application.auth import AuthUser
-from backend.infrastructure.postgres import models as db
 from sqlalchemy import insert, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, sessionmaker
+
+from backend.application.auth import AuthUser
+from backend.infrastructure.postgres import models as db
 
 
 class PostgresAuthRepository:

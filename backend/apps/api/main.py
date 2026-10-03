@@ -12,6 +12,13 @@ from typing import Any, Literal
 from uuid import UUID, uuid4
 
 import jwt
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse, Response
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
 from backend.application.auth import AuthenticationError, login, refresh_access
 from backend.application.errors import ForbiddenError, IdempotencyConflictError, NotFoundError
 from backend.application.events import submit_event
@@ -35,12 +42,6 @@ from backend.infrastructure.postgres.snapshots import PostgresConfigSnapshotRepo
 from backend.infrastructure.postgres.tracks import PostgresTrackRepository
 from backend.infrastructure.security import Argon2Passwords, Hs256Tokens
 from backend.infrastructure.storage import S3ObjectStore, StorageError
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, Response
-from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 logger = logging.getLogger(__name__)
 TRACE_PATTERN = re.compile(r"^(?:[0-9a-fA-F-]{36}|tr_[A-Za-z0-9_-]{8,64})$")

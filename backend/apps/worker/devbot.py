@@ -4,11 +4,12 @@ import logging
 import os
 import time
 
+from sqlalchemy import create_engine, select, update
+from sqlalchemy.orm import Session, sessionmaker
+
 from backend.apps.api.logging_config import configure_json_logging
 from backend.infrastructure.postgres import models as db
 from backend.infrastructure.telegram import TelegramDeliveryError, TelegramTransport
-from sqlalchemy import create_engine, select, update
-from sqlalchemy.orm import Session, sessionmaker
 
 logger = logging.getLogger(__name__)
 

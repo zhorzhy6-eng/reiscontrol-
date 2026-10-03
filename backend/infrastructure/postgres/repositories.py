@@ -3,15 +3,16 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
+from jsonschema import ValidationError, validate
+from sqlalchemy import and_, insert, or_, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.orm import Session, sessionmaker
+
 from backend.application.ports import StoredEvent
 from backend.domain.errors import DomainError, InvalidTransitionError
 from backend.domain.events import Event, validate_payload_v1
 from backend.domain.trips import Trip
 from backend.infrastructure.postgres import models as db
-from jsonschema import ValidationError, validate
-from sqlalchemy import and_, insert, or_, select, update
-from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.orm import Session, sessionmaker
 
 
 class PostgresEventRepository:

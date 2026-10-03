@@ -3,11 +3,12 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
+from sqlalchemy import insert, select
+from sqlalchemy.orm import Session, sessionmaker
+
 from backend.domain.errors import DomainError
 from backend.infrastructure.postgres import models as db
 from backend.infrastructure.postgres.repositories import _has_current_consent
-from sqlalchemy import insert, select
-from sqlalchemy.orm import Session, sessionmaker
 
 
 class PostgresTrackRepository:

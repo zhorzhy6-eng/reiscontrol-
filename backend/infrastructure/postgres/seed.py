@@ -7,9 +7,10 @@ from pathlib import Path
 from uuid import uuid4
 
 import yaml
-from backend.infrastructure.postgres import models as db
 from sqlalchemy import create_engine, select
 from sqlalchemy.dialects.postgresql import insert
+
+from backend.infrastructure.postgres import models as db
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 

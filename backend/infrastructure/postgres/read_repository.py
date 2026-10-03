@@ -3,10 +3,11 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from backend.infrastructure.postgres import models as db
-from backend.infrastructure.postgres.repositories import _has_current_consent
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session, sessionmaker
+
+from backend.infrastructure.postgres import models as db
+from backend.infrastructure.postgres.repositories import _has_current_consent
 
 
 class PostgresReadRepository:

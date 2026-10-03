@@ -3,12 +3,13 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from backend.domain.errors import DomainError
-from backend.domain.trips import Trip
-from backend.infrastructure.postgres import models as db
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, sessionmaker
+
+from backend.domain.errors import DomainError
+from backend.domain.trips import Trip
+from backend.infrastructure.postgres import models as db
 
 
 def build_snapshot(
