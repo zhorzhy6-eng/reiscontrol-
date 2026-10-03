@@ -5,7 +5,6 @@ import android.net.Uri
 import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.room.Room
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import kotlinx.coroutines.CancellationException
@@ -23,7 +22,6 @@ import ru.reiscontrol.core.common.AppResult
 import ru.reiscontrol.core.common.newClientEventId
 import ru.reiscontrol.core.config.ConfiguredEventType
 import ru.reiscontrol.core.config.parseSnapshot
-import ru.reiscontrol.core.database.AppDatabase
 import ru.reiscontrol.core.database.AttachmentEntity
 import ru.reiscontrol.core.database.CargoUnitEntity
 import ru.reiscontrol.core.database.ConfigSnapshotEntity
@@ -34,6 +32,7 @@ import ru.reiscontrol.core.database.OrderEntity
 import ru.reiscontrol.core.database.OutboxEntity
 import ru.reiscontrol.core.database.TripEntity
 import ru.reiscontrol.core.database.TripPointEntity
+import ru.reiscontrol.core.database.openAppDatabase
 import ru.reiscontrol.core.location.PlatformLocationProvider
 import ru.reiscontrol.core.logging.SafeLogger
 import ru.reiscontrol.core.media.WatermarkProcessor
@@ -80,7 +79,7 @@ data class AppUiState(
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val context = application.applicationContext
     private val session = SecureSession(context)
-    private val database = Room.databaseBuilder(context, AppDatabase::class.java, "reiscontrol.db").build()
+    private val database = openAppDatabase(context)
     private val dao = database.dao()
     private val api = ApiClientFactory.create(BuildConfig.API_BASE_URL, BuildConfig.VERSION_NAME, session.deviceId, session)
     private val location = PlatformLocationProvider(context)

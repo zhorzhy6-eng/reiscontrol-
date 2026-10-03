@@ -116,7 +116,7 @@ class PostgresConfigSnapshotRepository:
             snapshot = build_snapshot(
                 trip_id=trip.id,
                 version_id=version["id"],
-                configs=version["primitive_configs_jsonb"],
+                configs=version["primitive_configs"],
                 event_types=[dict(row) for row in type_rows],
                 steps=[dict(row) for row in step_rows],
             )

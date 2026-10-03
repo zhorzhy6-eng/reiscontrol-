@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.room.Room
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
@@ -12,10 +11,11 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import ru.reiscontrol.core.common.AppResult
-import ru.reiscontrol.core.database.AppDatabase
+import ru.reiscontrol.core.common.newClientEventId
 import ru.reiscontrol.core.database.ConsentEntity
 import ru.reiscontrol.core.database.LocationTrackEntity
 import ru.reiscontrol.core.database.TripEntity
+import ru.reiscontrol.core.database.openAppDatabase
 import ru.reiscontrol.core.location.PlatformLocationProvider
 import ru.reiscontrol.core.logging.SafeLogger
 import ru.reiscontrol.core.security.SecureSession
@@ -24,6 +24,8 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 private const val POLICY_VERSION = "policy_version"
+
+fun newClientTrackId(): String = newClientEventId().toString()
 
 fun eligibleTrackingTripIds(
     trips: List<TripEntity>,
@@ -40,7 +42,7 @@ class TrackingWorker(context: Context, parameters: WorkerParameters) : Coroutine
         val version = inputData.getString(POLICY_VERSION) ?: return Result.failure()
         val session = SecureSession(applicationContext)
         if (session.accessToken() == null) return Result.success()
-        val database = Room.databaseBuilder(applicationContext, AppDatabase::class.java, "reiscontrol.db").build()
+        val database = openAppDatabase(applicationContext)
         try {
             val dao = database.dao()
             val tripIds = eligibleTrackingTripIds(dao.activeTrips(), dao.consents(), version)
@@ -62,6 +64,7 @@ class TrackingWorker(context: Context, parameters: WorkerParameters) : Coroutine
                 dao.insertTrack(
                     LocationTrackEntity(
                         id = UUID.randomUUID().toString(),
+                        clientTrackId = newClientTrackId(),
                         tripId = tripId,
                         recordedAt = recordedAt,
                         lat = fix.value.lat,

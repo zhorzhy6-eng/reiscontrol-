@@ -1,6 +1,6 @@
 # Схема базы данных «Рейс-Контроль»
 
-**Версия:** 1.1
+**Версия:** 1.2
 **Дата:** 03.10.2026
 **СУБД:** PostgreSQL 16
 
@@ -14,6 +14,7 @@
 - **Мультиплатформенность:** поля `platform` везде, где применимо.
 - **Каналы обновления:** `direct` / `rustore` / `testflight` / `appstore` / `enterprise`.
 - **Миграции:** только expand/contract.
+- **Партиционирование:** отложено до масштабирования (ADR-0012).
 
 ---
 
@@ -47,7 +48,7 @@
 |---|---|---|
 | id | uuid PK | Идентификатор устройства |
 | user_id | uuid FK→users.id | Владелец |
-| platform | text | `android` / `ios` / `web` (устройство входа) |
+| platform | text | `android` / `ios` / `web` |
 | os_version | text | Версия ОС |
 | app_version | text | Версия приложения |
 | push_token | text | Токен push |
@@ -212,13 +213,13 @@
 
 **Уникальный индекс:** `(client_event_id, device_id)`.
 **Индексы:** `(trip_id, created_at)`, `(trip_id, event_type_code)`.
-**Партиционирование:** по `created_at` (месяц).
+**Партиционирование:** отложено до масштабирования (ADR-0012).
 
 ### event_types
 
 | Поле | Тип | Описание |
 |---|---|---|
-| code | text PK | `LOADING`, `UNLOADING`, `PARKING` |
+| code | text PK | `LOADING`, `UNLOADING`, `ARRIVAL`, `DEPARTURE`, `PARKING` |
 | primitive | text | `photo_set` / `document_set` / `number` / `text` / `confirm` / `signature` / `geo_only` |
 | title | text | Название |
 | order | int | Порядок |
@@ -260,7 +261,7 @@
 | template_id | uuid FK→checklist_templates.id | — |
 | version | int | Номер версии |
 | status | text | `draft` / `published` / `archived` |
-| primitive_configs_jsonb | jsonb | Настройки примитивов по `event_type_code`; копируются в снимок рейса |
+| primitive_configs | jsonb | Настройки примитивов (camera.allow_gallery, watermark, geo_only.require_accuracy_m и т.д.) |
 | published_at | timestamptz | — |
 | published_by | uuid FK→users.id | — |
 
@@ -272,7 +273,7 @@
 |---|---|---|
 | id | uuid PK | — |
 | version_id | uuid FK→checklist_versions.id | — |
-| event_type_code | text FK→event_types.code | Тип события, которому принадлежит шаг |
+| event_type_code | text FK→event_types.code | Тип события |
 | code | text | `front_3_4` |
 | type | text | `photo` / `document` / `number` / `text` / `confirm` / `signature` |
 | title | text | Название |
@@ -280,6 +281,8 @@
 | order | int | Порядок |
 | scope | text | `per_trip` / `per_cargo_unit` |
 | hint_icon | text | Подсказка |
+
+**Индексы:** `(version_id, event_type_code)`.
 
 ### document_types
 
@@ -304,7 +307,7 @@
 | id | uuid PK | — |
 | trip_id | uuid FK→trips.id | — |
 | version_id | uuid FK→checklist_versions.id | — |
-| snapshot_json | jsonb | Полный снимок |
+| snapshot_json | jsonb | Полный снимок (включая primitive_configs) |
 | created_at | timestamptz | — |
 
 **Индексы:** `(trip_id)`.
@@ -320,7 +323,7 @@
 |---|---|---|
 | id | uuid PK | — |
 | owner_type | text | `event` / `point` / `trip` / `document` |
-| owner_id | uuid | — |
+| owner_id | uuid | При загрузке до события — `client_event_id` |
 | trip_id | uuid FK→trips.id, nullable | Контекст авторизации загрузки; для `owner_type=event` обязателен |
 | kind | text FK→attachment_kinds.code | `photo` / `document` / `pdf` / `signature` / `scan` |
 | storage_key | text | Ключ в Object Storage |
@@ -374,6 +377,7 @@
 | Поле | Тип | Описание |
 |---|---|---|
 | id | uuid PK | — |
+| client_track_id | uuid | UUIDv7, создан на телефоне |
 | device_id | uuid FK→devices.id | Устройство |
 | user_id | uuid FK→users.id | Водитель |
 | trip_id | uuid FK→trips.id | Рейс (nullable) |
@@ -386,8 +390,9 @@
 | recorded_at | timestamptz | Время записи |
 | received_at | timestamptz | Время приёма сервером |
 
+**Уникальный индекс:** `(client_track_id, device_id)`.
 **Индексы:** `(device_id, recorded_at)`, `(trip_id, recorded_at)`.
-**Партиционирование:** по `recorded_at` (месяц).
+**Партиционирование:** отложено до масштабирования (ADR-0012).
 
 ---
 
@@ -416,6 +421,18 @@
 | payload | jsonb |
 | received_at | timestamptz |
 
+### telegram_subscriptions
+
+| Поле | Тип | Описание |
+|---|---|---|
+| id | uuid PK | — |
+| user_id | uuid FK→users.id | Логист |
+| chat_id | text | Telegram chat_id |
+| enabled | bool | Активна ли подписка |
+| created_at | timestamptz | — |
+
+**Индексы:** `(user_id)`, `(chat_id)`.
+
 ### notification_templates
 
 | Поле | Тип |
@@ -431,17 +448,6 @@
 | code | text PK |
 | enabled | bool |
 
-### telegram_subscriptions
-
-| Поле | Тип | Описание |
-|---|---|---|
-| user_id | uuid FK→users.id, часть PK | Логист с действующим доступом к рейсу |
-| chat_id | text, часть PK | Адрес чата Telegram |
-| enabled | bool | Доставка включена |
-| created_at | timestamptz | — |
-
-**Индекс:** `(chat_id)`. Получателей выбирает воркер с проверкой роли и актуального RBAC-скоупа.
-
 ### notification_log
 
 | Поле | Тип |
@@ -454,7 +460,7 @@
 | sent_at | timestamptz |
 | error | text |
 
-Для Telegram-уведомлений уникальная пара `(event_id, recipient)` позволяет воркеру пропускать уже доставленные события при повторе outbox.
+**Уникальная пара:** `(event_id, recipient)` предотвращает повторную доставку одному адресату при повторе outbox.
 
 ### integration_jobs
 
@@ -482,7 +488,7 @@
 
 | Поле | Тип | Описание |
 |---|---|---|
-| version_code | int | Код версии; часть составного PK |
+| version_code | int | Код версии |
 | version_name | text | Имя версии |
 | platform | text | `android` / `ios` |
 | channel | text | `direct` / `rustore` / `testflight` / `appstore` / `enterprise` |
@@ -550,6 +556,6 @@
 
 - **Миграции:** Alembic, expand/contract.
 - **Бэкапы:** PITR для PostgreSQL.
-- **Партиционирование:** `events`, `location_tracks` — по месяцу.
+- **Партиционирование:** отложено до масштабирования (ADR-0012).
 
 **Конец документа.**

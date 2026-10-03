@@ -77,6 +77,7 @@ data class EventResponse(val id: String, val state: String, val rejection_reason
 data class CompleteTripRequest(val track_number: String)
 
 data class TrackDto(
+    val client_track_id: String,
     val trip_id: String,
     val recorded_at: String,
     val lat: Double,

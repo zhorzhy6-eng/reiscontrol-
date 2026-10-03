@@ -4,8 +4,15 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import ru.reiscontrol.core.database.ConsentEntity
 import ru.reiscontrol.core.database.TripEntity
+import java.util.UUID
 
 class TrackingWorkerTest {
+    @Test
+    fun createsUuidV7ForPersistedTrack() {
+        val id = UUID.fromString(newClientTrackId())
+        assertEquals(7, id.version())
+    }
+
     @Test
     fun samplesOnlyActiveTripsWithCurrentTrackingConsent() {
         val trips =

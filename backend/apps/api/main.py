@@ -15,7 +15,7 @@ import jwt
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -179,6 +179,7 @@ class SyncInput(BaseModel):
 class TrackInput(BaseModel):
     """One periodic location sample."""
 
+    client_track_id: UUID
     recorded_at: datetime
     lat: float = Field(ge=-90, le=90)
     lon: float = Field(ge=-180, le=180)
@@ -187,6 +188,13 @@ class TrackInput(BaseModel):
     bearing_deg: float | None = None
     location_source: Literal["gms", "hms", "platform", "ios"]
     trip_id: UUID
+
+    @field_validator("client_track_id")
+    @classmethod
+    def uuid_v7(cls, value: UUID) -> UUID:
+        if value.version != 7:
+            raise ValueError("client_track_id must be UUIDv7")
+        return value
 
 
 class TracksInput(BaseModel):
@@ -634,12 +642,16 @@ def post_tracks_route(
     user_id: UUID = Depends(current_user),
     services: Services = Depends(get_services),
 ) -> dict:
-    """Append samples only while the driver has tracking consent and an active trip."""
+    """Acknowledge exact retries; append new samples for live consenting trips."""
     services.tracks.append_batch(
         user_id=user_id,
         device_id=UUID(request.headers["X-Device-Id"]),
         tracks=[track.model_dump() for track in body.tracks],
         can_operate_trip=services.users.can_operate_trip,
+    )
+    logger.info(
+        "Track batch acknowledged",
+        extra={"trace_id": request.state.trace_id, "track_count": len(body.tracks)},
     )
     return {"accepted": len(body.tracks)}
 

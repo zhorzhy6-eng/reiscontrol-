@@ -4,10 +4,9 @@ import argparse
 import os
 import re
 from datetime import datetime, timezone
-from uuid import UUID
+from uuid import UUID, uuid4
 
-from sqlalchemy import create_engine, select
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import create_engine, insert, select, update
 
 from backend.infrastructure.postgres import models as db
 
@@ -32,18 +31,34 @@ def set_subscription(database_url: str, user_id: UUID, chat_id: str, enabled: bo
             ).scalar_one_or_none()
             if role != "logistician":
                 raise ValueError("Active logistician account required")
-            connection.execute(
-                insert(db.telegram_subscriptions)
-                .values(
-                    user_id=user_id,
-                    chat_id=chat_id,
-                    enabled=enabled,
-                    created_at=datetime.now(timezone.utc),
+            existing_ids = (
+                connection.execute(
+                    select(db.telegram_subscriptions.c.id)
+                    .where(
+                        db.telegram_subscriptions.c.user_id == user_id,
+                        db.telegram_subscriptions.c.chat_id == chat_id,
+                    )
+                    .with_for_update()
                 )
-                .on_conflict_do_update(
-                    index_elements=["user_id", "chat_id"], set_={"enabled": enabled}
-                )
+                .scalars()
+                .all()
             )
+            if existing_ids:
+                connection.execute(
+                    update(db.telegram_subscriptions)
+                    .where(db.telegram_subscriptions.c.id.in_(existing_ids))
+                    .values(enabled=enabled)
+                )
+            else:
+                connection.execute(
+                    insert(db.telegram_subscriptions).values(
+                        id=uuid4(),
+                        user_id=user_id,
+                        chat_id=chat_id,
+                        enabled=enabled,
+                        created_at=datetime.now(timezone.utc),
+                    )
+                )
     finally:
         engine.dispose()
 

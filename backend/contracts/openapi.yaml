@@ -416,8 +416,9 @@ paths:
                   type: array
                   items:
                     type: object
-                    required: [recorded_at, lat, lon, accuracy_m, location_source, trip_id]
+                    required: [client_track_id, recorded_at, lat, lon, accuracy_m, location_source, trip_id]
                     properties:
+                      client_track_id: { type: string, format: uuid, description: "UUIDv7, созданный клиентом; повтор подтверждается без новой записи" }
                       recorded_at: { type: string, format: date-time }
                       lat: { type: number }
                       lon: { type: number }
@@ -430,7 +431,9 @@ paths:
                       trip_id: { type: string, format: uuid }
       responses:
         '202':
-          description: Треки приняты
+          description: Треки подтверждены; повтор с тем же client_track_id не создаёт запись. accepted включает подтверждённые повторы.
+        '409':
+          description: client_track_id повторно использован для другого трека
 
   /app/releases/latest:
     parameters: *client_headers
@@ -615,6 +618,7 @@ components:
       type: object
       properties:
         id: { type: string, format: uuid }
+        client_track_id: { type: string, format: uuid, nullable: true, description: "UUIDv7; null только для записей до expand-миграции" }
         device_id: { type: string, format: uuid }
         user_id: { type: string, format: uuid }
         trip_id: { type: string, format: uuid, nullable: true }

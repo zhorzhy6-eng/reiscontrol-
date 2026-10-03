@@ -108,7 +108,7 @@ def seed_stage1(database_url: str, root: Path = REPOSITORY_ROOT) -> None:
                     template_id=template_id,
                     version=1,
                     status="published",
-                    primitive_configs_jsonb=primitive_configs,
+                    primitive_configs=primitive_configs,
                     published_at=now,
                     published_by=None,
                 )

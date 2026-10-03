@@ -258,7 +258,7 @@ checklist_versions = Table(
     uid("template_id", foreign="checklist_templates.id"),
     Column("version", Integer, nullable=False),
     code("status"),
-    Column("primitive_configs_jsonb", JSONB, nullable=False),
+    Column("primitive_configs", JSONB, nullable=False),
     stamp("published_at", nullable=True),
     uid("published_by", foreign="users.id", nullable=True),
     Index("ix_checklist_versions_template_version", "template_id", "version"),
@@ -276,6 +276,7 @@ checklist_steps = Table(
     Column("order", Integer, nullable=False),
     code("scope"),
     code("hint_icon", nullable=True),
+    Index("ix_checklist_steps_version_event_type", "version_id", "event_type_code"),
 )
 document_types = Table(
     "document_types",
@@ -350,6 +351,7 @@ location_tracks = Table(
     "location_tracks",
     metadata,
     uid("id", primary=True),
+    uid("client_track_id", nullable=True),
     uid("device_id", foreign="devices.id"),
     uid("user_id", foreign="users.id"),
     uid("trip_id", foreign="trips.id", nullable=True),
@@ -363,6 +365,7 @@ location_tracks = Table(
     stamp("received_at"),
     Index("ix_tracks_device_recorded", "device_id", "recorded_at"),
     Index("ix_tracks_trip_recorded", "trip_id", "recorded_at"),
+    Index("uq_tracks_client_device", "client_track_id", "device_id", unique=True),
 )
 outbox = Table(
     "outbox",
@@ -400,17 +403,19 @@ notification_channels = Table(
 telegram_subscriptions = Table(
     "telegram_subscriptions",
     metadata,
-    uid("user_id", primary=True, foreign="users.id"),
-    code("chat_id", primary=True),
+    uid("id", primary=True),
+    uid("user_id", foreign="users.id"),
+    code("chat_id"),
     Column("enabled", Boolean, nullable=False),
     stamp("created_at"),
+    Index("ix_telegram_subscriptions_user", "user_id"),
     Index("ix_telegram_subscriptions_chat", "chat_id"),
 )
 notification_log = Table(
     "notification_log",
     metadata,
     uid("id", primary=True),
-    uid("event_id", foreign="events.id", nullable=True),
+    Column("event_id", UUID(as_uuid=True), ForeignKey("events.id", name="fk_notification_event")),
     code("template_code"),
     code("recipient"),
     code("status"),

@@ -55,6 +55,14 @@ abstract class AppDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     abstract suspend fun insertTrack(row: LocationTrackEntity)
 
+    @Query(
+        "UPDATE location_tracks SET clientTrackId = :clientTrackId WHERE id = :id AND clientTrackId IS NULL",
+    )
+    abstract suspend fun setTrackClientId(
+        id: String,
+        clientTrackId: String,
+    )
+
     @Query("SELECT * FROM location_tracks WHERE state = 'queued' ORDER BY recordedAt LIMIT 100")
     abstract suspend fun queuedTracks(): List<LocationTrackEntity>
 

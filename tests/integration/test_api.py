@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 from fastapi.testclient import TestClient
 
 from backend.application.auth import AuthUser
+from backend.application.errors import IdempotencyConflictError
 from backend.application.ports import StoredEvent
 from backend.apps.api.main import app, get_services
 from backend.domain.trips import Trip
@@ -151,10 +152,32 @@ class FakeTracks:
         self.items = []
 
     def append_batch(self, *, user_id, device_id, tracks, can_operate_trip):
-        self.items.extend(tracks)
+        for track in tracks:
+            match = next(
+                (
+                    row
+                    for row in self.items
+                    if row["client_track_id"] == track["client_track_id"]
+                    and row["device_id"] == device_id
+                ),
+                None,
+            )
+            if match is not None:
+                if match["track"] != track:
+                    raise IdempotencyConflictError(
+                        "client_track_id already belongs to another track"
+                    )
+                continue
+            self.items.append(
+                {
+                    "client_track_id": track["client_track_id"],
+                    "device_id": device_id,
+                    "track": track,
+                }
+            )
 
     def for_trip(self, trip_id):
-        return self.items
+        return [row["track"] for row in self.items]
 
 
 class FakeAttachments:
@@ -276,24 +299,36 @@ def test_event_post_is_authenticated_and_idempotent():
             "geo",
             "tracking",
         }
-        track = client.post(
-            "/api/v1/location/tracks",
-            headers=headers,
-            json={
-                "tracks": [
-                    {
-                        "recorded_at": datetime.now(timezone.utc).isoformat(),
-                        "lat": 55.75,
-                        "lon": 37.62,
-                        "accuracy_m": 10,
-                        "location_source": "platform",
-                        "trip_id": str(trips.trip.id),
-                    }
-                ]
-            },
-        )
+        track_body = {
+            "tracks": [
+                {
+                    "client_track_id": str(CLIENT_EVENT_ID),
+                    "recorded_at": datetime.now(timezone.utc).isoformat(),
+                    "lat": 55.75,
+                    "lon": 37.62,
+                    "accuracy_m": 10,
+                    "location_source": "platform",
+                    "trip_id": str(trips.trip.id),
+                }
+            ]
+        }
+        track = client.post("/api/v1/location/tracks", headers=headers, json=track_body)
         assert track.status_code == 202
+        retry = client.post("/api/v1/location/tracks", headers=headers, json=track_body)
+        assert retry.status_code == 202
         assert len(client.get(f"/api/v1/trips/{trips.trip.id}/tracks", headers=headers).json()) == 1
+        invalid_version = {"tracks": [{**track_body["tracks"][0], "client_track_id": str(uuid4())}]}
+        assert (
+            client.post(
+                "/api/v1/location/tracks", headers=headers, json=invalid_version
+            ).status_code
+            == 422
+        )
+        conflicting = {"tracks": [{**track_body["tracks"][0], "lat": 55.76}]}
+        assert (
+            client.post("/api/v1/location/tracks", headers=headers, json=conflicting).status_code
+            == 409
+        )
         init_body = {
             "owner_type": "event",
             "owner_id": str(CLIENT_EVENT_ID),

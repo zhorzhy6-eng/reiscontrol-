@@ -1,7 +1,6 @@
 package ru.reiscontrol.core.sync
 
 import android.content.Context
-import androidx.room.Room
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -21,9 +20,9 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
 import retrofit2.HttpException
-import ru.reiscontrol.core.database.AppDatabase
 import ru.reiscontrol.core.database.AttachmentEntity
 import ru.reiscontrol.core.database.EventEntity
+import ru.reiscontrol.core.database.openAppDatabase
 import ru.reiscontrol.core.logging.SafeLogger
 import ru.reiscontrol.core.network.ApiClientFactory
 import ru.reiscontrol.core.network.ApiService
@@ -46,7 +45,7 @@ class SyncWorker(context: Context, parameters: WorkerParameters) : CoroutineWork
         val apiUrl = inputData.getString(API_URL) ?: return Result.failure()
         val appVersion = inputData.getString(APP_VERSION) ?: return Result.failure()
         val api = ApiClientFactory.create(apiUrl, appVersion, session.deviceId, session)
-        val database = Room.databaseBuilder(applicationContext, AppDatabase::class.java, "reiscontrol.db").build()
+        val database = openAppDatabase(applicationContext)
         val dao = database.dao()
         val logger = SafeLogger(applicationContext)
         var retry = false
@@ -99,12 +98,17 @@ class SyncWorker(context: Context, parameters: WorkerParameters) : CoroutineWork
             }
             for (track in dao.queuedTracks()) {
                 try {
+                    val clientTrackId =
+                        track.clientTrackId ?: newClientTrackId().also {
+                            dao.setTrackClientId(track.id, it)
+                        }
                     val response =
                         authenticated(api, session) {
                             api.tracks(
                                 TracksRequest(
                                     listOf(
                                         TrackDto(
+                                            client_track_id = clientTrackId,
                                             trip_id = track.tripId,
                                             recorded_at = track.recordedAt,
                                             lat = track.lat,

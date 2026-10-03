@@ -1,7 +1,23 @@
 package ru.reiscontrol.core.database
 
+import android.content.Context
 import androidx.room.Database
+import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
+
+private val migration1To2 =
+    object : Migration(1, 2) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE location_tracks ADD COLUMN clientTrackId TEXT")
+        }
+    }
+
+fun openAppDatabase(context: Context): AppDatabase =
+    Room.databaseBuilder(context, AppDatabase::class.java, "reiscontrol.db")
+        .addMigrations(migration1To2)
+        .build()
 
 @Database(
     entities = [
@@ -19,7 +35,7 @@ import androidx.room.RoomDatabase
         ConsentEntity::class,
         ReleaseEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {

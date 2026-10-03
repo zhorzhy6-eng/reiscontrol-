@@ -109,6 +109,7 @@ data class OutboxEntity(
 @Entity(tableName = "location_tracks", indices = [Index("tripId", "recordedAt")])
 data class LocationTrackEntity(
     @PrimaryKey val id: String,
+    val clientTrackId: String?,
     val tripId: String,
     val recordedAt: String,
     val lat: Double,
