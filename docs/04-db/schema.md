@@ -47,7 +47,7 @@
 |---|---|---|
 | id | uuid PK | Идентификатор устройства |
 | user_id | uuid FK→users.id | Владелец |
-| platform | text | `android` / `ios` |
+| platform | text | `android` / `ios` / `web` (устройство входа) |
 | os_version | text | Версия ОС |
 | app_version | text | Версия приложения |
 | push_token | text | Токен push |
@@ -96,6 +96,7 @@
 | ip | text | IP-адрес |
 
 **Индексы:** `(user_id, consent_type)`.
+**Идемпотентность согласия:** уникальный частичный индекс `(user_id, consent_type, policy_version)` для строк с `revoked_at IS NULL`.
 
 ---
 
@@ -259,6 +260,7 @@
 | template_id | uuid FK→checklist_templates.id | — |
 | version | int | Номер версии |
 | status | text | `draft` / `published` / `archived` |
+| primitive_configs_jsonb | jsonb | Настройки примитивов по `event_type_code`; копируются в снимок рейса |
 | published_at | timestamptz | — |
 | published_by | uuid FK→users.id | — |
 
@@ -270,6 +272,7 @@
 |---|---|---|
 | id | uuid PK | — |
 | version_id | uuid FK→checklist_versions.id | — |
+| event_type_code | text FK→event_types.code | Тип события, которому принадлежит шаг |
 | code | text | `front_3_4` |
 | type | text | `photo` / `document` / `number` / `text` / `confirm` / `signature` |
 | title | text | Название |
@@ -305,6 +308,7 @@
 | created_at | timestamptz | — |
 
 **Индексы:** `(trip_id)`.
+**Ограничение:** один неизменяемый снимок на рейс (`UNIQUE trip_id`).
 
 ---
 
@@ -317,6 +321,7 @@
 | id | uuid PK | — |
 | owner_type | text | `event` / `point` / `trip` / `document` |
 | owner_id | uuid | — |
+| trip_id | uuid FK→trips.id, nullable | Контекст авторизации загрузки; для `owner_type=event` обязателен |
 | kind | text FK→attachment_kinds.code | `photo` / `document` / `pdf` / `signature` / `scan` |
 | storage_key | text | Ключ в Object Storage |
 | mime | text | MIME-тип |
@@ -425,6 +430,17 @@
 |---|---|
 | code | text PK |
 | enabled | bool |
+
+### telegram_subscriptions
+
+| Поле | Тип | Описание |
+|---|---|---|
+| user_id | uuid FK→users.id, часть PK | Логист с действующим доступом к рейсу |
+| chat_id | text, часть PK | Адрес чата Telegram |
+| enabled | bool | Доставка включена |
+| created_at | timestamptz | — |
+
+**Индекс:** `(chat_id)`. Получателей выбирает воркер с проверкой роли и актуального RBAC-скоупа.
 
 ### notification_log
 

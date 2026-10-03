@@ -2,16 +2,35 @@ openapi: 3.0.3
 info:
   title: ReisControl API
   version: 1.1.0
-  description: API мобильного приложения «Рейс-Контроль» (Android + iOS)
+  description: Единый API «Рейс-Контроль» (Android, iOS и веб-кабинет)
 
 servers:
-  - url: https://api.reiscontrol.example/v1
+  - url: https://api.reiscontrol.example/api/v1
 
 security:
   - BearerAuth: []
 
+x-client-headers: &client_headers
+  - name: X-App-Version
+    in: header
+    required: true
+    schema: { type: string }
+  - name: X-Platform
+    in: header
+    required: true
+    schema: { type: string, enum: [android, ios, web] }
+  - name: X-Device-Id
+    in: header
+    required: true
+    schema: { type: string, format: uuid }
+  - name: X-Trace-Id
+    in: header
+    required: false
+    schema: { type: string }
+
 paths:
   /auth/login:
+    parameters: *client_headers
     post:
       summary: Вход по телефону и паролю
       security: []
@@ -30,7 +49,7 @@ paths:
                   required: [platform, app_version, device_id]
                   properties:
                     device_id: { type: string, format: uuid }
-                    platform: { type: string, enum: [android, ios] }
+                    platform: { type: string, enum: [android, ios, web] }
                     os_version: { type: string }
                     app_version: { type: string }
                     push_token: { type: string, nullable: true }
@@ -52,6 +71,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
 
   /auth/refresh:
+    parameters: *client_headers
     post:
       summary: Обновление access-токена
       security: []
@@ -76,6 +96,7 @@ paths:
                   expires_in: { type: integer }
 
   /me:
+    parameters: *client_headers
     get:
       summary: Профиль текущего пользователя
       responses:
@@ -87,6 +108,7 @@ paths:
                 $ref: '#/components/schemas/User'
 
   /me/consents:
+    parameters: *client_headers
     get:
       summary: Получить список согласий пользователя
       responses:
@@ -116,6 +138,7 @@ paths:
           description: Согласие принято
 
   /orders:
+    parameters: *client_headers
     get:
       summary: Список заявок текущего водителя
       responses:
@@ -129,6 +152,7 @@ paths:
                   $ref: '#/components/schemas/Order'
 
   /trips/{trip_id}:
+    parameters: *client_headers
     get:
       summary: Карточка рейса
       parameters:
@@ -145,6 +169,7 @@ paths:
                 $ref: '#/components/schemas/Trip'
 
   /trips/{trip_id}/start:
+    parameters: *client_headers
     post:
       summary: Начать рейс
       parameters:
@@ -161,6 +186,7 @@ paths:
                 $ref: '#/components/schemas/Trip'
 
   /trips/{trip_id}/complete:
+    parameters: *client_headers
     post:
       summary: Завершить рейс (отправить на подтверждение логисту)
       parameters:
@@ -188,6 +214,7 @@ paths:
                 $ref: '#/components/schemas/CompletionError'
 
   /trips/{trip_id}/tracks:
+    parameters: *client_headers
     get:
       summary: Получить точки трека рейса (для карты маршрута)
       parameters:
@@ -213,7 +240,27 @@ paths:
                 items:
                   $ref: '#/components/schemas/LocationTrack'
 
+  /trips/{trip_id}/events:
+    parameters: *client_headers
+    get:
+      summary: Принятые события рейса для веб-кабинета и клиента
+      parameters:
+        - name: trip_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Хронология событий
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventView'
+
   /config/snapshots/{snapshot_id}:
+    parameters: *client_headers
     get:
       summary: Получить снимок конфигурации для рейса
       parameters:
@@ -230,6 +277,7 @@ paths:
                 $ref: '#/components/schemas/ConfigSnapshot'
 
   /sync:
+    parameters: *client_headers
     post:
       summary: Пакетная синхронизация (pull)
       requestBody:
@@ -259,8 +307,14 @@ paths:
                   next_cursor: { type: string }
 
   /events:
+    parameters: *client_headers
     post:
       summary: Отправить событие на сервер
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
       requestBody:
         required: true
         content:
@@ -269,7 +323,7 @@ paths:
               $ref: '#/components/schemas/Event'
       responses:
         '200':
-          description: Событие принято
+          description: Событие принято либо возвращён результат идентичного повтора по (client_event_id, device_id)
           content:
             application/json:
               schema:
@@ -280,11 +334,12 @@ paths:
                   server_time_utc: { type: string, format: date-time }
                   rejection_reason: { type: string, nullable: true }
         '409':
-          description: Событие с таким client_event_id уже существует (идемпотентность)
+          description: Тот же (client_event_id, device_id) использован для другого содержимого события
 
   /attachments:init:
+    parameters: *client_headers
     post:
-      summary: Инициализация загрузки файла
+      summary: Инициализация загрузки файла события (этап 1)
       requestBody:
         required: true
         content:
@@ -293,8 +348,9 @@ paths:
               type: object
               required: [owner_type, owner_id, kind, mime, size, source]
               properties:
-                owner_type: { type: string, enum: [event, point, trip, document] }
+                owner_type: { type: string, enum: [event], description: Другие владельцы будут включены в следующих этапах }
                 owner_id: { type: string, format: uuid }
+                trip_id: { type: string, format: uuid, description: Обязателен при owner_type=event; сервер проверяет право водителя на рейс }
                 kind: { type: string, enum: [photo, document, pdf, signature, scan] }
                 mime: { type: string }
                 size: { type: integer, format: int64 }
@@ -312,6 +368,7 @@ paths:
                   expires_at: { type: string, format: date-time }
 
   /attachments/{attachment_id}:commit:
+    parameters: *client_headers
     post:
       summary: Подтверждение загрузки файла
       parameters:
@@ -344,6 +401,7 @@ paths:
                   state: { type: string, enum: [stored] }
 
   /location/tracks:
+    parameters: *client_headers
     post:
       summary: Отправить пакет треков (периодический трекинг)
       requestBody:
@@ -358,7 +416,7 @@ paths:
                   type: array
                   items:
                     type: object
-                    required: [recorded_at, lat, lon]
+                    required: [recorded_at, lat, lon, accuracy_m, location_source, trip_id]
                     properties:
                       recorded_at: { type: string, format: date-time }
                       lat: { type: number }
@@ -369,12 +427,13 @@ paths:
                       location_source:
                         type: string
                         enum: [gms, hms, platform, ios]
-                      trip_id: { type: string, format: uuid, nullable: true }
+                      trip_id: { type: string, format: uuid }
       responses:
         '202':
           description: Треки приняты
 
   /app/releases/latest:
+    parameters: *client_headers
     get:
       summary: Проверка обновления приложения
       security: []
@@ -410,6 +469,7 @@ paths:
                   release_notes: { type: string }
 
   /logs:
+    parameters: *client_headers
     post:
       summary: Отправка логов на сервер (dev-bot)
       requestBody:
@@ -468,6 +528,7 @@ components:
         cargo_type: { type: string }
         status: { type: string }
         created_at: { type: string, format: date-time }
+        trip_id: { type: string, format: uuid }
 
     Trip:
       type: object
@@ -525,6 +586,27 @@ components:
         lon: { type: number, nullable: true }
         accuracy_m: { type: integer, nullable: true }
         location_source: { type: string, enum: [gms, hms, platform, ios] }
+        corrects_event_id: { type: string, format: uuid, nullable: true }
+
+    EventView:
+      allOf:
+        - $ref: '#/components/schemas/Event'
+        - type: object
+          properties:
+            id: { type: string, format: uuid }
+            state: { type: string, enum: [accepted, rejected] }
+            server_time_utc: { type: string, format: date-time }
+            time_trust: { type: string, enum: [high, skewed, unknown] }
+            attachments:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  kind: { type: string }
+                  source: { type: string }
+                  state: { type: string }
+                  download_url: { type: string, description: Краткоживущая ссылка для просмотра сохранённого файла }
 
     LocationTrack:
       type: object

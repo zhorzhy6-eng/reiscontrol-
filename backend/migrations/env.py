@@ -1,16 +1,17 @@
-"""Alembic environment; models and migrations are added in later stages."""
+"""Alembic environment for PostgreSQL metadata."""
 
 import os
 from logging.config import fileConfig
 
 from alembic import context
+from backend.infrastructure.postgres.models import metadata
 from sqlalchemy import engine_from_config, pool
 
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata = None
+target_metadata = metadata
 
 
 def database_url() -> str:

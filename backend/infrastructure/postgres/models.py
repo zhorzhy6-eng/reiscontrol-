@@ -14,6 +14,7 @@ from sqlalchemy import (
     Table,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
@@ -106,6 +107,14 @@ user_consents = Table(
     stamp("revoked_at", nullable=True),
     code("ip"),
     Index("ix_user_consents_user_type", "user_id", "consent_type"),
+    Index(
+        "uq_user_consents_active_version",
+        "user_id",
+        "consent_type",
+        "policy_version",
+        unique=True,
+        postgresql_where=text("revoked_at IS NULL"),
+    ),
 )
 
 cargo_types = Table("cargo_types", metadata, code("code", primary=True), code("name"))
@@ -249,6 +258,7 @@ checklist_versions = Table(
     uid("template_id", foreign="checklist_templates.id"),
     Column("version", Integer, nullable=False),
     code("status"),
+    Column("primitive_configs_jsonb", JSONB, nullable=False),
     stamp("published_at", nullable=True),
     uid("published_by", foreign="users.id", nullable=True),
     Index("ix_checklist_versions_template_version", "template_id", "version"),
@@ -258,6 +268,7 @@ checklist_steps = Table(
     metadata,
     uid("id", primary=True),
     uid("version_id", foreign="checklist_versions.id"),
+    code("event_type_code", foreign="event_types.code"),
     code("code"),
     code("type"),
     code("title"),
@@ -288,6 +299,7 @@ config_snapshots = Table(
     uid("version_id", foreign="checklist_versions.id"),
     Column("snapshot_json", JSONB, nullable=False),
     stamp("created_at"),
+    UniqueConstraint("trip_id", name="uq_config_snapshots_trip"),
     Index("ix_config_snapshots_trip", "trip_id"),
 )
 
@@ -298,6 +310,7 @@ attachments = Table(
     uid("id", primary=True),
     code("owner_type"),
     uid("owner_id"),
+    uid("trip_id", foreign="trips.id", nullable=True),
     code("kind", foreign="attachment_kinds.code"),
     code("storage_key"),
     code("mime"),
@@ -383,6 +396,15 @@ notification_channels = Table(
     metadata,
     code("code", primary=True),
     Column("enabled", Boolean, nullable=False),
+)
+telegram_subscriptions = Table(
+    "telegram_subscriptions",
+    metadata,
+    uid("user_id", primary=True, foreign="users.id"),
+    code("chat_id", primary=True),
+    Column("enabled", Boolean, nullable=False),
+    stamp("created_at"),
+    Index("ix_telegram_subscriptions_chat", "chat_id"),
 )
 notification_log = Table(
     "notification_log",

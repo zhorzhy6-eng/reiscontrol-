@@ -1,0 +1,11 @@
+kinds:
+  - code: photo
+    name: Фото
+  - code: document
+    name: Документ
+  - code: pdf
+    name: PDF
+  - code: signature
+    name: Подпись
+  - code: scan
+    name: Скан
