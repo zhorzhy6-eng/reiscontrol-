@@ -11,6 +11,6 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install contract test dependencies
-        run: python -m pip install pytest PyYAML
+        run: python -m pip install pytest PyYAML jsonschema
       - name: Validate OpenAPI and JSON Schema files
         run: python -m pytest tests/contract

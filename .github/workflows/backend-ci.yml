@@ -16,5 +16,5 @@ jobs:
         run: python -m ruff check --config backend/pyproject.toml backend tests
       - name: Black
         run: python -m black --check --config backend/pyproject.toml backend tests
-      - name: Placeholder tests
+      - name: Unit, integration and API smoke tests
         run: python -m pytest tests/unit tests/integration tests/e2e

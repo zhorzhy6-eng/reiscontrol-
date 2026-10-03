@@ -21,5 +21,7 @@ jobs:
         run: npm run lint
       - name: Prettier
         run: npm run format:check
-      - name: Placeholder tests
+      - name: Unit tests
         run: npm test
+      - name: Build
+        run: npm run build
