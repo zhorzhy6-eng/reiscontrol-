@@ -43,6 +43,15 @@ abstract class AppDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun upsertAttachment(row: AttachmentEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun upsertConsents(rows: List<ConsentEntity>)
+
+    @Query("DELETE FROM user_consents")
+    abstract suspend fun clearConsents()
+
+    @Query("SELECT * FROM user_consents")
+    abstract suspend fun consents(): List<ConsentEntity>
+
     @Query("SELECT * FROM orders ORDER BY id DESC")
     abstract fun observeOrders(): Flow<List<OrderEntity>>
 
@@ -131,5 +140,11 @@ abstract class AppDao {
         require(event.state == "complete" || event.state == "queued")
         upsertEvent(event.copy(state = "queued"))
         insertOutbox(outbox)
+    }
+
+    @Transaction
+    open suspend fun replaceConsents(rows: List<ConsentEntity>) {
+        clearConsents()
+        upsertConsents(rows)
     }
 }

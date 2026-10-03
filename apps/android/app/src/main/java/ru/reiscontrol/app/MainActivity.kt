@@ -9,6 +9,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import ru.reiscontrol.core.design.ReisTheme
 import ru.reiscontrol.feature.auth.AuthScreen
+import ru.reiscontrol.feature.auth.ConsentScreen
 import ru.reiscontrol.feature.closing.ClosingScreen
 import ru.reiscontrol.feature.diagnostics.DiagnosticsScreen
 import ru.reiscontrol.feature.event.EventScreen
@@ -26,6 +27,14 @@ class MainActivity : ComponentActivity() {
             ReisTheme {
                 when (ui.screen) {
                     Screen.AUTH -> AuthScreen(ui.busy, ui.error, model::login)
+                    Screen.CONSENTS ->
+                        ConsentScreen(
+                            policies = model.policies,
+                            pending = ui.pendingConsents,
+                            busy = ui.busy,
+                            error = ui.error,
+                            onAccept = model::acceptConsents,
+                        )
                     Screen.ORDERS ->
                         OrdersScreen(
                             orders = ui.orders,

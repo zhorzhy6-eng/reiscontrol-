@@ -19,6 +19,15 @@ data class RefreshRequest(val refresh_token: String)
 
 data class RefreshResponse(val access_token: String)
 
+data class ConsentDto(
+    val consent_type: String,
+    val policy_version: String,
+    val accepted_at: String,
+    val revoked_at: String?,
+)
+
+data class ConsentRequest(val consent_type: String, val policy_version: String)
+
 data class OrderDto(
     val id: String,
     val client_name: String,
@@ -77,6 +86,14 @@ interface ApiService {
     suspend fun refresh(
         @Body body: RefreshRequest,
     ): RefreshResponse
+
+    @GET("me/consents")
+    suspend fun consents(): List<ConsentDto>
+
+    @POST("me/consents")
+    suspend fun acceptConsent(
+        @Body body: ConsentRequest,
+    ): ConsentDto
 
     @GET("orders")
     suspend fun orders(): List<OrderDto>

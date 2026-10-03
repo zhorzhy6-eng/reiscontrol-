@@ -1,8 +1,15 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+
+val policies =
+    Properties().apply {
+        rootProject.file("../../config/policies/stage1.properties").inputStream().use(::load)
+    }
 
 android {
     namespace = "ru.reiscontrol.app"
@@ -16,6 +23,9 @@ android {
         versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", "\"https://api.reiscontrol.example/api/v1/\"")
+        buildConfigField("String", "POLICY_VERSION", "\"${policies.getProperty("policy_version")}\"")
+        buildConfigField("String", "PD_POLICY_URL", "\"${policies.getProperty("pd_url")}\"")
+        buildConfigField("String", "GEO_POLICY_URL", "\"${policies.getProperty("geo_url")}\"")
     }
 
     buildTypes {

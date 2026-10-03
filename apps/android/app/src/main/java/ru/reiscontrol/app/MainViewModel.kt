@@ -26,6 +26,7 @@ import ru.reiscontrol.core.database.AppDatabase
 import ru.reiscontrol.core.database.AttachmentEntity
 import ru.reiscontrol.core.database.CargoUnitEntity
 import ru.reiscontrol.core.database.ConfigSnapshotEntity
+import ru.reiscontrol.core.database.ConsentEntity
 import ru.reiscontrol.core.database.EventEntity
 import ru.reiscontrol.core.database.EventTypeEntity
 import ru.reiscontrol.core.database.OrderEntity
@@ -37,6 +38,7 @@ import ru.reiscontrol.core.logging.SafeLogger
 import ru.reiscontrol.core.media.WatermarkProcessor
 import ru.reiscontrol.core.network.ApiClientFactory
 import ru.reiscontrol.core.network.CompleteTripRequest
+import ru.reiscontrol.core.network.ConsentRequest
 import ru.reiscontrol.core.network.DeviceDto
 import ru.reiscontrol.core.network.LoginRequest
 import ru.reiscontrol.core.network.RefreshRequest
@@ -44,12 +46,15 @@ import ru.reiscontrol.core.rules.RequiredStep
 import ru.reiscontrol.core.rules.missingPhotos
 import ru.reiscontrol.core.security.SecureSession
 import ru.reiscontrol.core.sync.SyncScheduler
+import ru.reiscontrol.feature.auth.AcceptedConsent
+import ru.reiscontrol.feature.auth.ConsentPolicy
+import ru.reiscontrol.feature.auth.pendingConsents
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
 
-enum class Screen { AUTH, ORDERS, TRIP, EVENT, CLOSING, DIAGNOSTICS, SETTINGS }
+enum class Screen { AUTH, CONSENTS, ORDERS, TRIP, EVENT, CLOSING, DIAGNOSTICS, SETTINGS }
 
 data class AppUiState(
     val screen: Screen = Screen.AUTH,
@@ -66,6 +71,7 @@ data class AppUiState(
     val activePoint: TripPointEntity? = null,
     val activeClientEventId: String? = null,
     val capturedCodes: Set<String> = emptySet(),
+    val pendingConsents: Set<String> = emptySet(),
 )
 
 /** UI orchestration; accepted facts and uploaded bytes remain owned by Room and WorkManager. */
@@ -78,7 +84,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val location = PlatformLocationProvider(context)
     private val media = WatermarkProcessor(context)
     private val logger = SafeLogger(context)
-    private val mutable = MutableStateFlow(AppUiState(screen = if (session.accessToken() == null) Screen.AUTH else Screen.ORDERS))
+    val policies =
+        listOf(
+            ConsentPolicy("pd", BuildConfig.POLICY_VERSION, BuildConfig.PD_POLICY_URL),
+            ConsentPolicy("geo", BuildConfig.POLICY_VERSION, BuildConfig.GEO_POLICY_URL),
+        )
+    private val mutable = MutableStateFlow(AppUiState(screen = if (session.accessToken() == null) Screen.AUTH else Screen.CONSENTS))
     val state = mutable.asStateFlow()
     val deviceId: String get() = session.deviceId
     private var eventsJob: Job? = null
@@ -86,7 +97,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         viewModelScope.launch { dao.observeOrders().collect { orders -> mutable.update { it.copy(orders = orders) } } }
         SyncScheduler.schedule(context, BuildConfig.API_BASE_URL, BuildConfig.VERSION_NAME)
-        if (session.accessToken() != null) refreshOrders()
+        if (session.accessToken() != null) action("consents.load_failed") { confirmConsentState() }
     }
 
     fun login(
@@ -99,9 +110,42 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return@action
         }
         session.saveTokens(response.access_token, response.refresh_token)
-        mutable.update { it.copy(screen = Screen.ORDERS, error = null) }
-        fetchOrders()
+        mutable.update { it.copy(screen = Screen.CONSENTS, error = null) }
+        confirmConsentState()
     }
+
+    private suspend fun confirmConsentState() {
+        val accepted =
+            try {
+                val rows = authenticated { api.consents() }
+                dao.replaceConsents(
+                    rows.filter { it.revoked_at == null }.map {
+                        ConsentEntity(
+                            key = "${it.consent_type}:${it.policy_version}",
+                            consentType = it.consent_type,
+                            policyVersion = it.policy_version,
+                            acceptedAt = it.accepted_at,
+                        )
+                    },
+                )
+                rows.map { AcceptedConsent(it.consent_type, it.policy_version, it.revoked_at != null) }
+            } catch (_: java.io.IOException) {
+                dao.consents().map { AcceptedConsent(it.consentType, it.policyVersion, false) }
+            }
+        val pending = pendingConsents(policies, accepted)
+        mutable.update { it.copy(pendingConsents = pending, screen = if (pending.isEmpty()) Screen.ORDERS else Screen.CONSENTS) }
+        if (pending.isEmpty()) fetchOrders()
+    }
+
+    fun acceptConsents(checked: Set<String>) =
+        action("consents.accept_failed") {
+            val pending = mutable.value.pendingConsents
+            if (!checked.containsAll(pending) || pending.isEmpty()) return@action
+            for (policy in policies.filter { it.type in pending }) {
+                authenticated { api.acceptConsent(ConsentRequest(policy.type, policy.version)) }
+            }
+            confirmConsentState()
+        }
 
     fun refreshOrders() = action("orders.refresh_failed") { fetchOrders() }
 
