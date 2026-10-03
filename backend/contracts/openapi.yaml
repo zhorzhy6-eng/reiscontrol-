@@ -241,6 +241,8 @@ paths:
               properties:
                 last_sync_at: { type: string, format: date-time }
                 cursor: { type: string }
+                device_time_utc: { type: string, format: date-time, description: Текущее UTC-время устройства при запросе }
+                elapsed_realtime_ms: { type: integer, format: int64, description: Монотонное время устройства при запросе }
       responses:
         '200':
           description: Изменения с сервера
@@ -250,6 +252,7 @@ paths:
                 type: object
                 properties:
                   server_time: { type: string, format: date-time }
+                  clock_skew_ms: { type: integer, nullable: true, description: Оценка расхождения часов на момент синхронизации }
                   config_version: { type: integer }
                   min_supported_version: { type: integer }
                   trips: { type: array, items: { $ref: '#/components/schemas/Trip' } }
