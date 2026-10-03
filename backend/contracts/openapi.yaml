@@ -478,10 +478,13 @@ paths:
           application/json:
             schema:
               type: object
+              required: [level, message]
               properties:
                 level: { type: string, enum: [info, warning, error, crash] }
-                message: { type: string }
-                context: { type: object }
+                message: { type: string, pattern: '^[A-Za-z0-9_.:-]{1,100}$', description: Машинный код без персональных данных }
+                context:
+                  type: object
+                  description: Разрешены только event_type_code, attachments_count, duration_ms, status_code
       responses:
         '204':
           description: Логи приняты
