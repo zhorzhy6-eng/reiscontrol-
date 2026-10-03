@@ -400,7 +400,7 @@
 | id | uuid PK | — |
 | event_id | uuid FK→events.id | — |
 | payload | jsonb | — |
-| status | text | `pending` / `sent` / `failed` |
+| status | text | `pending` / `processing` / `sent` / `failed` |
 | retries | int | — |
 | next_attempt_at | timestamptz | — |
 | created_at | timestamptz | — |
@@ -447,11 +447,14 @@
 | Поле | Тип |
 |---|---|
 | id | uuid PK |
+| event_id | uuid FK→events.id, nullable |
 | template_code | text |
 | recipient | text |
 | status | text |
 | sent_at | timestamptz |
 | error | text |
+
+Для Telegram-уведомлений уникальная пара `(event_id, recipient)` позволяет воркеру пропускать уже доставленные события при повторе outbox.
 
 ### integration_jobs
 

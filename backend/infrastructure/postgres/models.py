@@ -410,11 +410,13 @@ notification_log = Table(
     "notification_log",
     metadata,
     uid("id", primary=True),
+    uid("event_id", foreign="events.id", nullable=True),
     code("template_code"),
     code("recipient"),
     code("status"),
     stamp("sent_at", nullable=True),
     code("error", nullable=True),
+    UniqueConstraint("event_id", "recipient", name="uq_notification_event_recipient"),
 )
 integration_jobs = Table(
     "integration_jobs",

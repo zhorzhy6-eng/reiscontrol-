@@ -62,3 +62,12 @@ def test_attachment_trip_context_and_event_replay_contract():
     responses = contract["paths"]["/events"]["post"]["responses"]
     assert "идентичного повтора" in responses["200"]["description"]
     assert "другого содержимого" in responses["409"]["description"]
+
+
+def test_notification_delivery_expands_log_without_rewriting_events():
+    migration = Path("backend/migrations/versions/0002_notification_delivery.py").read_text(
+        encoding="utf-8"
+    )
+    assert "ADD COLUMN event_id UUID" in migration
+    assert "UNIQUE (event_id, recipient)" in migration
+    assert "UPDATE events" not in migration
