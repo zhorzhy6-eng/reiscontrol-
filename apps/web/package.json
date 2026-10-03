@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
     "lint": "eslint .",
     "format:check": "prettier --check \"**/*.{js,mjs,ts,tsx,json}\"",
     "test": "node --test"
@@ -14,6 +17,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^4.0.0",
     "eslint": "^9.0.0",
     "prettier": "^3.0.0",
