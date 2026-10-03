@@ -34,6 +34,9 @@ export type Event = {
   event_type_code: string;
   created_at: string;
   device_time_utc: string | null;
+  lat: number | null;
+  lon: number | null;
+  accuracy_m: number | null;
   payload: Record<string, unknown>;
   attachments: Attachment[];
 };

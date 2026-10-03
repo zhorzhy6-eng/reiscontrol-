@@ -235,6 +235,12 @@ export function App() {
                           <strong>{item.event_type_code}</strong>
                           <time>{dateTime(item.device_time_utc ?? item.created_at)}</time>
                         </div>
+                        {item.lat !== null && item.lon !== null && (
+                          <p className="location">
+                            Координаты: {item.lat.toFixed(6)}, {item.lon.toFixed(6)}
+                            {item.accuracy_m !== null && ` · точность ${item.accuracy_m} м`}
+                          </p>
+                        )}
                         {item.attachments.length > 0 && (
                           <ul className="attachments">
                             {item.attachments.map((attachment) => (
