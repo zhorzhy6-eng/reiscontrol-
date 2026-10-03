@@ -262,13 +262,20 @@ def test_event_post_is_authenticated_and_idempotent():
         assert sync.status_code == 200
         assert sync.json()["clock_skew_ms"] is not None
         assert len(sync.json()["trips"]) == 1
-        consent = client.post(
-            "/api/v1/me/consents",
-            headers=headers,
-            json={"consent_type": "geo", "policy_version": "1"},
-        )
-        assert consent.status_code == 201
-        assert client.get("/api/v1/me/consents", headers=headers).json()[0]["consent_type"] == "geo"
+        for consent_type in ("pd", "geo", "tracking"):
+            consent = client.post(
+                "/api/v1/me/consents",
+                headers=headers,
+                json={"consent_type": consent_type, "policy_version": "1.0"},
+            )
+            assert consent.status_code == 201
+        assert {
+            row["consent_type"] for row in client.get("/api/v1/me/consents", headers=headers).json()
+        } == {
+            "pd",
+            "geo",
+            "tracking",
+        }
         track = client.post(
             "/api/v1/location/tracks",
             headers=headers,
