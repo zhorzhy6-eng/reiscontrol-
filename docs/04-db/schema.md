@@ -463,7 +463,7 @@
 
 | Поле | Тип | Описание |
 |---|---|---|
-| version_code | int PK | Код версии |
+| version_code | int | Код версии; часть составного PK |
 | version_name | text | Имя версии |
 | platform | text | `android` / `ios` |
 | channel | text | `direct` / `rustore` / `testflight` / `appstore` / `enterprise` |
