@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://reiscontrol.example/schemas/primitive/geo_only.json",
+  "title": "GeoOnlyConfig",
+  "type": "object",
+  "required": ["code", "title"],
+  "properties": {
+    "code": { "type": "string", "examples": ["arrival", "departure"] },
+    "title": { "type": "string" },
+    "require_accuracy_m": { "type": "integer", "default": 100 },
+    "timeout_seconds": { "type": "integer", "default": 30 }
+  }
+}

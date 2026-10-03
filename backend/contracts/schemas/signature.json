@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://reiscontrol.example/schemas/primitive/signature.json",
+  "title": "SignatureConfig",
+  "type": "object",
+  "required": ["code", "title"],
+  "properties": {
+    "code": { "type": "string", "examples": ["act_signature"] },
+    "title": { "type": "string" },
+    "required": { "type": "boolean", "default": true },
+    "require_full_name": { "type": "boolean", "default": true },
+    "save_as": { "type": "string", "enum": ["png", "pdf"], "default": "png" }
+  }
+}

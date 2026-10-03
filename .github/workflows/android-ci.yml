@@ -1,0 +1,28 @@
+name: Android CI
+
+on: [push, pull_request]
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10.2"
+      - name: KtLint configuration
+        run: gradle ktlintCheck
+      - name: APK and unit tests when app module exists
+        run: |
+          if [ -f app/build.gradle.kts ]; then
+            gradle :app:assembleDebug :app:testDebugUnitTest
+          else
+            echo "Android :app module will be added in stage 1."
+          fi

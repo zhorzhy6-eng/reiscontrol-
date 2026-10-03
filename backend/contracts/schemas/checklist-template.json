@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://reiscontrol.example/schemas/checklist-template.json",
+  "title": "ChecklistTemplate",
+  "type": "object",
+  "required": ["snapshot_id", "trip_id", "checklist_version", "event_types"],
+  "properties": {
+    "snapshot_id": { "type": "string", "format": "uuid" },
+    "trip_id": { "type": "string", "format": "uuid" },
+    "checklist_version": { "type": "integer" },
+    "event_types": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/EventType" }
+    }
+  },
+  "definitions": {
+    "EventType": {
+      "type": "object",
+      "required": ["code", "primitive", "title", "order", "scope", "steps", "completion_rules"],
+      "properties": {
+        "code": { "type": "string" },
+        "primitive": {
+          "type": "string",
+          "enum": ["photo_set", "document_set", "number", "text", "confirm", "signature", "geo_only"]
+        },
+        "title": { "type": "string" },
+        "order": { "type": "integer" },
+        "min_app_version": { "type": "integer", "default": 1 },
+        "scope": { "type": "string", "enum": ["per_trip", "per_cargo_unit"] },
+        "steps": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Step" }
+        },
+        "completion_rules": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/CompletionRule" }
+        }
+      }
+    },
+    "Step": {
+      "type": "object",
+      "required": ["code", "type", "title", "required", "order"],
+      "properties": {
+        "code": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["photo", "document", "number", "text", "confirm", "signature"]
+        },
+        "title": { "type": "string" },
+        "required": { "type": "boolean" },
+        "order": { "type": "integer" },
+        "hint_icon": { "type": "string" },
+        "constraints": { "type": "object" }
+      }
+    },
+    "CompletionRule": {
+      "type": "object",
+      "required": ["rule"],
+      "properties": {
+        "rule": {
+          "type": "string",
+          "enum": ["all_required_steps_done", "min_photos", "require_track_number", "require_signature"]
+        },
+        "count": { "type": "integer" },
+        "per": { "type": "string", "enum": ["trip", "cargo_unit"] }
+      }
+    }
+  }
+}

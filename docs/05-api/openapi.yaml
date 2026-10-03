@@ -1,0 +1,587 @@
+openapi: 3.0.3
+info:
+  title: ReisControl API
+  version: 1.1.0
+  description: API мобильного приложения «Рейс-Контроль» (Android + iOS)
+
+servers:
+  - url: https://api.reiscontrol.example/v1
+
+security:
+  - BearerAuth: []
+
+paths:
+  /auth/login:
+    post:
+      summary: Вход по телефону и паролю
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, password, device]
+              properties:
+                phone: { type: string }
+                password: { type: string }
+                device:
+                  type: object
+                  required: [platform, app_version, device_id]
+                  properties:
+                    device_id: { type: string, format: uuid }
+                    platform: { type: string, enum: [android, ios] }
+                    os_version: { type: string }
+                    app_version: { type: string }
+                    push_token: { type: string, nullable: true }
+                    push_provider: { type: string, enum: [fcm, hms, apns], nullable: true }
+      responses:
+        '200':
+          description: Успешный вход
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: { type: string }
+                  refresh_token: { type: string }
+                  expires_in: { type: integer }
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      summary: Обновление access-токена
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        '200':
+          description: Новый access-токен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: { type: string }
+                  expires_in: { type: integer }
+
+  /me:
+    get:
+      summary: Профиль текущего пользователя
+      responses:
+        '200':
+          description: Профиль
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /me/consents:
+    get:
+      summary: Получить список согласий пользователя
+      responses:
+        '200':
+          description: Список согласий
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Consent'
+
+    post:
+      summary: Принять согласие
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [consent_type, policy_version]
+              properties:
+                consent_type: { type: string, enum: [pd, geo, tracking] }
+                policy_version: { type: string }
+      responses:
+        '201':
+          description: Согласие принято
+
+  /orders:
+    get:
+      summary: Список заявок текущего водителя
+      responses:
+        '200':
+          description: Список заявок
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+
+  /trips/{trip_id}:
+    get:
+      summary: Карточка рейса
+      parameters:
+        - name: trip_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Рейс
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+
+  /trips/{trip_id}/start:
+    post:
+      summary: Начать рейс
+      parameters:
+        - name: trip_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Рейс начат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+
+  /trips/{trip_id}/complete:
+    post:
+      summary: Завершить рейс (отправить на подтверждение логисту)
+      parameters:
+        - name: trip_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [track_number]
+              properties:
+                track_number: { type: string }
+      responses:
+        '200':
+          description: Рейс отправлен на подтверждение
+        '422':
+          description: Не выполнены условия завершения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompletionError'
+
+  /trips/{trip_id}/tracks:
+    get:
+      summary: Получить точки трека рейса (для карты маршрута)
+      parameters:
+        - name: trip_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: from
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Точки трека
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LocationTrack'
+
+  /config/snapshots/{snapshot_id}:
+    get:
+      summary: Получить снимок конфигурации для рейса
+      parameters:
+        - name: snapshot_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Снимок конфигурации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigSnapshot'
+
+  /sync:
+    post:
+      summary: Пакетная синхронизация (pull)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                last_sync_at: { type: string, format: date-time }
+                cursor: { type: string }
+      responses:
+        '200':
+          description: Изменения с сервера
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  server_time: { type: string, format: date-time }
+                  config_version: { type: integer }
+                  min_supported_version: { type: integer }
+                  trips: { type: array, items: { $ref: '#/components/schemas/Trip' } }
+                  next_cursor: { type: string }
+
+  /events:
+    post:
+      summary: Отправить событие на сервер
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Event'
+      responses:
+        '200':
+          description: Событие принято
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  state: { type: string, enum: [accepted, rejected] }
+                  server_time_utc: { type: string, format: date-time }
+                  rejection_reason: { type: string, nullable: true }
+        '409':
+          description: Событие с таким client_event_id уже существует (идемпотентность)
+
+  /attachments:init:
+    post:
+      summary: Инициализация загрузки файла
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [owner_type, owner_id, kind, mime, size, source]
+              properties:
+                owner_type: { type: string, enum: [event, point, trip, document] }
+                owner_id: { type: string, format: uuid }
+                kind: { type: string, enum: [photo, document, pdf, signature, scan] }
+                mime: { type: string }
+                size: { type: integer, format: int64 }
+                source: { type: string, enum: [camera, gallery] }
+      responses:
+        '200':
+          description: Готово к загрузке
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  attachment_id: { type: string, format: uuid }
+                  upload_url: { type: string }
+                  expires_at: { type: string, format: date-time }
+
+  /attachments/{attachment_id}:commit:
+    post:
+      summary: Подтверждение загрузки файла
+      parameters:
+        - name: attachment_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sha256, size]
+              properties:
+                sha256: { type: string }
+                size: { type: integer, format: int64 }
+                width: { type: integer, nullable: true }
+                height: { type: integer, nullable: true }
+                watermark_meta: { type: object, nullable: true }
+      responses:
+        '200':
+          description: Файл принят
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  attachment_id: { type: string, format: uuid }
+                  state: { type: string, enum: [stored] }
+
+  /location/tracks:
+    post:
+      summary: Отправить пакет треков (периодический трекинг)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tracks]
+              properties:
+                tracks:
+                  type: array
+                  items:
+                    type: object
+                    required: [recorded_at, lat, lon]
+                    properties:
+                      recorded_at: { type: string, format: date-time }
+                      lat: { type: number }
+                      lon: { type: number }
+                      accuracy_m: { type: integer }
+                      speed_mps: { type: number, nullable: true }
+                      bearing_deg: { type: number, nullable: true }
+                      location_source:
+                        type: string
+                        enum: [gms, hms, platform, ios]
+                      trip_id: { type: string, format: uuid, nullable: true }
+      responses:
+        '202':
+          description: Треки приняты
+
+  /app/releases/latest:
+    get:
+      summary: Проверка обновления приложения
+      security: []
+      parameters:
+        - name: current_version
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: platform
+          in: query
+          required: true
+          schema: { type: string, enum: [android, ios] }
+        - name: channel
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [direct, rustore, testflight, appstore, enterprise]
+      responses:
+        '200':
+          description: Информация о последней версии
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version_code: { type: integer }
+                  version_name: { type: string }
+                  min_supported: { type: integer }
+                  download_url: { type: string }
+                  sha256: { type: string }
+                  mandatory: { type: boolean }
+                  release_notes: { type: string }
+
+  /logs:
+    post:
+      summary: Отправка логов на сервер (dev-bot)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                level: { type: string, enum: [info, warning, error, crash] }
+                message: { type: string }
+                context: { type: object }
+      responses:
+        '204':
+          description: Логи приняты
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Не авторизован
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string }
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        phone: { type: string }
+        role: { type: string, enum: [driver, logistician, admin] }
+        full_name: { type: string }
+
+    Consent:
+      type: object
+      properties:
+        consent_type: { type: string, enum: [pd, geo, tracking] }
+        policy_version: { type: string }
+        accepted_at: { type: string, format: date-time }
+        revoked_at: { type: string, format: date-time, nullable: true }
+
+    Order:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        client_name: { type: string }
+        cargo_type: { type: string }
+        status: { type: string }
+        created_at: { type: string, format: date-time }
+
+    Trip:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        order_id: { type: string, format: uuid }
+        status: { type: string, enum: [assigned, in_progress, pending_logistician, closed, cancelled] }
+        config_snapshot_id: { type: string, format: uuid }
+        started_at: { type: string, format: date-time, nullable: true }
+        closed_at: { type: string, format: date-time, nullable: true }
+        track_number: { type: string, nullable: true }
+        points:
+          type: array
+          items: { $ref: '#/components/schemas/TripPoint' }
+        cargo_units:
+          type: array
+          items: { $ref: '#/components/schemas/CargoUnit' }
+
+    TripPoint:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        point_type: { type: string }
+        order_index: { type: integer }
+        address: { type: string }
+        lat: { type: number }
+        lon: { type: number }
+        planned_at: { type: string, format: date-time }
+
+    CargoUnit:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        vin: { type: string }
+        make: { type: string }
+        model: { type: string }
+        position_in_truck: { type: string }
+
+    Event:
+      type: object
+      required: [client_event_id, device_id, trip_id, event_type_code, payload]
+      properties:
+        client_event_id: { type: string, format: uuid }
+        device_id: { type: string, format: uuid }
+        trip_id: { type: string, format: uuid }
+        point_id: { type: string, format: uuid, nullable: true }
+        cargo_unit_id: { type: string, format: uuid, nullable: true }
+        event_type_code: { type: string }
+        payload: { type: object }
+        payload_schema_version: { type: integer }
+        device_time_utc: { type: string, format: date-time }
+        device_tz_offset_min: { type: integer }
+        elapsed_realtime_ms: { type: integer, format: int64 }
+        lat: { type: number, nullable: true }
+        lon: { type: number, nullable: true }
+        accuracy_m: { type: integer, nullable: true }
+        location_source: { type: string, enum: [gms, hms, platform, ios] }
+
+    LocationTrack:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        device_id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        trip_id: { type: string, format: uuid, nullable: true }
+        lat: { type: number }
+        lon: { type: number }
+        accuracy_m: { type: integer }
+        speed_mps: { type: number, nullable: true }
+        bearing_deg: { type: number, nullable: true }
+        location_source: { type: string, enum: [gms, hms, platform, ios] }
+        recorded_at: { type: string, format: date-time }
+        received_at: { type: string, format: date-time }
+
+    ConfigSnapshot:
+      type: object
+      properties:
+        snapshot_id: { type: string, format: uuid }
+        trip_id: { type: string, format: uuid }
+        checklist_version: { type: integer }
+        event_types:
+          type: array
+          items: { $ref: '#/components/schemas/EventTypeConfig' }
+
+    EventTypeConfig:
+      type: object
+      properties:
+        code: { type: string }
+        primitive: { type: string }
+        title: { type: string }
+        order: { type: integer }
+        min_app_version: { type: integer }
+        scope: { type: string, enum: [per_trip, per_cargo_unit] }
+        steps:
+          type: array
+          items: { $ref: '#/components/schemas/ChecklistStep' }
+        completion_rules:
+          type: array
+          items: { type: object }
+
+    ChecklistStep:
+      type: object
+      properties:
+        code: { type: string }
+        type: { type: string }
+        title: { type: string }
+        required: { type: boolean }
+        order: { type: integer }
+        hint_icon: { type: string, nullable: true }
+
+    CompletionError:
+      type: object
+      properties:
+        error: { type: string }
+        missing_steps:
+          type: array
+          items: { type: string }
+        missing_documents:
+          type: array
+          items: { type: string }

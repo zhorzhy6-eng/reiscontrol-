@@ -1,0 +1,54 @@
+# Источник документации остаётся вне репозитория
+/Project/
+/~$*
+
+# Секреты и локальные настройки
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.key
+*.p12
+*.jks
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+.coverage*
+htmlcov/
+
+# JavaScript / web
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Android / Gradle
+.gradle/
+**/build/
+local.properties
+*.apk
+*.aab
+
+# Apple / editors
+.DS_Store
+.idea/
+.vscode/
+DerivedData/
+*.xcuserstate
+
+# Terraform
+.terraform/
+*.tfstate*
+*.tfplan
+
+# Scratch
+/tmp/

@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://reiscontrol.example/schemas/primitive/confirm.json",
+  "title": "ConfirmConfig",
+  "type": "object",
+  "required": ["code", "title", "button_label"],
+  "properties": {
+    "code": { "type": "string" },
+    "title": { "type": "string" },
+    "button_label": { "type": "string", "examples": ["Принял груз", "Сдал груз"] },
+    "require_signature": { "type": "boolean", "default": false }
+  }
+}

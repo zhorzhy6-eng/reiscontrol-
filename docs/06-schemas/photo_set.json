@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://reiscontrol.example/schemas/primitive/photo_set.json",
+  "title": "PhotoSetConfig",
+  "type": "object",
+  "required": ["steps"],
+  "properties": {
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["code", "title", "required"],
+        "properties": {
+          "code": { "type": "string", "examples": ["front_3_4", "rear_3_4", "vin_plate"] },
+          "title": { "type": "string" },
+          "required": { "type": "boolean" },
+          "hint_icon": { "type": "string" },
+          "min_photos": { "type": "integer", "default": 1 },
+          "max_photos": { "type": "integer", "default": 1 }
+        }
+      }
+    },
+    "camera": {
+      "type": "object",
+      "properties": {
+        "allow_gallery": { "type": "boolean", "default": true },
+        "watermark": { "type": "boolean", "default": true },
+        "compress": {
+          "type": "object",
+          "properties": {
+            "max_width": { "type": "integer", "default": 1920 },
+            "quality": { "type": "integer", "default": 80 }
+          }
+        }
+      }
+    }
+  }
+}

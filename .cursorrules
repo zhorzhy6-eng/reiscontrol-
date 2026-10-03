@@ -1,0 +1,113 @@
+# .cursorrules
+
+Правила для Cursor (и аналогичных инструментов).
+
+---
+
+## Контекст проекта
+
+Проект «Рейс-Контроль» — Android-приложение для водителей автовозов + backend на FastAPI + веб-кабинет + Telegram-боты.
+
+**Стек:** Kotlin, Compose, Room, Retrofit, FastAPI, PostgreSQL, Yandex Cloud, React, TypeScript.
+
+---
+
+## Что читать перед работой
+
+1. `AGENTS.md` — правила для ИИ.
+2. `CONVENTIONS.md` — правила кода.
+3. `docs/01-requirements/` — ТЗ.
+4. `docs/02-architecture/` — архитектура.
+5. `docs/03-adr/` — ADR.
+6. `docs/04-db/` — схема БД.
+7. `docs/05-api/openapi.yaml` — API.
+
+---
+
+## Правила
+
+### Код
+
+- Python: ruff + black, line-length 100.
+- Kotlin: ktlint, official style.
+- TypeScript: eslint + prettier, 2 spaces.
+
+### Слои
+
+```
+apps → application → domain
+infrastructure → application/domain
+```
+
+`domain` не знает ни про SQL, ни про HTTP.
+
+### Конфигурация
+
+Не хардкодить. Всё — в БД или в конфигах.
+
+### Логирование
+
+Структурированные JSON-логи. См. ADR-0011.
+
+### Тесты
+
+Новый код — новый тест. Без тестов не принимается.
+
+### Идемпотентность
+
+`client_event_id` + `(client_event_id, device_id)`.
+
+### Миграции
+
+Только expand/contract. Никаких big bang.
+
+### API
+
+Только аддитивные изменения. Удаление — через депрекацию.
+
+---
+
+## Запреты
+
+- ❌ YDB (используем PostgreSQL)
+- ❌ `FusedLocationProvider` напрямую (используем порт)
+- ❌ Хардкод типов событий
+- ❌ `UPDATE` поверх accepted-событий
+- ❌ Big bang миграции
+- ❌ Логировать ПДн
+- ❌ Секреты в коде
+- ❌ `print()` вместо логирования
+- ❌ `except Exception: pass`
+- ❌ RuStore
+- ❌ Смешивать слои
+
+---
+
+## Стиль ответов
+
+- Кратко, по делу.
+- Без воды.
+- Ссылки на ADR, где применимо.
+- Если неясно — **спроси**, не додумывай.
+
+---
+
+## Примеры
+
+### Хороший промпт
+
+> Прочитай `docs/03-adr/ADR-0004-offline-first.md`. Напиши модуль `domain/events` с функциями `create_event`, `accept_event`, `reject_event`. Идемпотентность по `client_event_id`. Append-only. Тесты в `tests/unit/domain/test_events.py`. Логирование через `logger.info`. Критерий приёмки: тесты проходят, линтеры зелёные.
+
+### Плохой промпт
+
+> Напиши backend.
+
+---
+
+## Полезные ссылки
+
+- `AGENTS.md`
+- `CONVENTIONS.md`
+- `ROADMAP.md`
+- `docs/02-architecture/`
+- `docs/03-adr/`

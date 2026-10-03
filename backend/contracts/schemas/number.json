@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://reiscontrol.example/schemas/primitive/number.json",
+  "title": "NumberConfig",
+  "type": "object",
+  "required": ["code", "title"],
+  "properties": {
+    "code": { "type": "string", "examples": ["odometer", "fuel"] },
+    "title": { "type": "string" },
+    "required": { "type": "boolean", "default": false },
+    "min": { "type": "number" },
+    "max": { "type": "number" },
+    "unit": { "type": "string", "examples": ["km", "l"] },
+    "decimal": { "type": "boolean", "default": false }
+  }
+}

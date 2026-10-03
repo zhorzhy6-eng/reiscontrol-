@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://reiscontrol.example/schemas/primitive/text.json",
+  "title": "TextConfig",
+  "type": "object",
+  "required": ["code", "title"],
+  "properties": {
+    "code": { "type": "string", "examples": ["track_number", "comment"] },
+    "title": { "type": "string" },
+    "required": { "type": "boolean", "default": false },
+    "multiline": { "type": "boolean", "default": false },
+    "min_length": { "type": "integer" },
+    "max_length": { "type": "integer", "default": 500 },
+    "pattern": { "type": "string", "description": "Regex-проверка" }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://reiscontrol.example/schemas/primitive/document_set.json",
+  "title": "DocumentSetConfig",
+  "type": "object",
+  "required": ["documents"],
+  "properties": {
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "title", "required"],
+        "properties": {
+          "code": { "type": "string", "examples": ["ttn", "cmr", "waybill"] },
+          "title": { "type": "string" },
+          "required": { "type": "boolean" },
+          "pages": { "type": "string", "enum": ["single", "multi"], "default": "single" },
+          "allow_gallery": { "type": "boolean", "default": false }
+        }
+      }
+    }
+  }
+}
