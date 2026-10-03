@@ -346,7 +346,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [owner_type, owner_id, kind, mime, size, source]
+              required: [owner_type, owner_id, trip_id, kind, mime, size, source]
               properties:
                 owner_type: { type: string, enum: [event], description: Другие владельцы будут включены в следующих этапах }
                 owner_id: { type: string, format: uuid }
