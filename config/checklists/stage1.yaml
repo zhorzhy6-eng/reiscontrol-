@@ -1,0 +1,46 @@
+# Утверждённые 03.10.2026 обязательные шаги этапа 1.
+event_types:
+  LOADING:
+    primitive: photo_set
+    scope: per_cargo_unit
+    camera:
+      allow_gallery: true
+      watermark: true
+    steps:
+      - code: front_3_4
+        type: photo
+        title: Спереди слева
+        required: true
+        scope: per_cargo_unit
+        order: 1
+      - code: rear_3_4
+        type: photo
+        title: Сзади справа
+        required: true
+        scope: per_cargo_unit
+        order: 2
+      - code: vin_plate
+        type: photo
+        title: Табличка VIN
+        required: true
+        scope: per_cargo_unit
+        order: 3
+  UNLOADING:
+    primitive: photo_set
+    scope: per_cargo_unit
+    camera:
+      allow_gallery: true
+      watermark: true
+    steps:
+      - code: front_3_4
+        type: photo
+        title: Спереди слева
+        required: true
+        scope: per_cargo_unit
+        order: 1
+      - code: rear_3_4
+        type: photo
+        title: Сзади справа
+        required: true
+        scope: per_cargo_unit
+        order: 2

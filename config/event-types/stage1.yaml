@@ -1,0 +1,27 @@
+# Утверждённые 03.10.2026 типы событий этапа 1.
+event_types:
+  - code: LOADING
+    primitive: photo_set
+    title: Погрузка
+    order: 1
+    min_app_version: 1
+  - code: UNLOADING
+    primitive: photo_set
+    title: Выгрузка
+    order: 2
+    min_app_version: 1
+  - code: ARRIVAL
+    primitive: geo_only
+    title: Я на месте
+    order: 3
+    min_app_version: 1
+  - code: DEPARTURE
+    primitive: geo_only
+    title: Отбытие
+    order: 4
+    min_app_version: 1
+  - code: PARKING
+    primitive: geo_only
+    title: Стоянка
+    order: 5
+    min_app_version: 1
