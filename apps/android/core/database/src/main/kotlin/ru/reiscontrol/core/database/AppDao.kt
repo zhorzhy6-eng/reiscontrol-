@@ -52,11 +52,26 @@ abstract class AppDao {
     @Query("SELECT * FROM user_consents")
     abstract suspend fun consents(): List<ConsentEntity>
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    abstract suspend fun insertTrack(row: LocationTrackEntity)
+
+    @Query("SELECT * FROM location_tracks WHERE state = 'queued' ORDER BY recordedAt LIMIT 100")
+    abstract suspend fun queuedTracks(): List<LocationTrackEntity>
+
+    @Query("UPDATE location_tracks SET state = 'sent' WHERE id IN (:ids)")
+    abstract suspend fun markTracksSent(ids: List<String>)
+
+    @Query("UPDATE location_tracks SET state = 'rejected' WHERE id = :id")
+    abstract suspend fun markTrackRejected(id: String)
+
     @Query("SELECT * FROM orders ORDER BY id DESC")
     abstract fun observeOrders(): Flow<List<OrderEntity>>
 
     @Query("SELECT * FROM trips WHERE id = :tripId LIMIT 1")
     abstract suspend fun trip(tripId: String): TripEntity?
+
+    @Query("SELECT * FROM trips WHERE status = 'in_progress' ORDER BY id")
+    abstract suspend fun activeTrips(): List<TripEntity>
 
     @Query("SELECT * FROM cargo_units WHERE tripId = :tripId ORDER BY orderIndex")
     abstract suspend fun cargoUnits(tripId: String): List<CargoUnitEntity>

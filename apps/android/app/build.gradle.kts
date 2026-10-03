@@ -26,6 +26,7 @@ android {
         buildConfigField("String", "POLICY_VERSION", "\"${policies.getProperty("policy_version")}\"")
         buildConfigField("String", "PD_POLICY_URL", "\"${policies.getProperty("pd_url")}\"")
         buildConfigField("String", "GEO_POLICY_URL", "\"${policies.getProperty("geo_url")}\"")
+        buildConfigField("String", "TRACKING_POLICY_URL", "\"${policies.getProperty("tracking_url")}\"")
     }
 
     buildTypes {

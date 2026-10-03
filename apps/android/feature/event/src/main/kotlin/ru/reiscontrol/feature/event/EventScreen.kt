@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -101,6 +102,9 @@ private fun CameraScreen(
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current
     val controller = remember { CameraController(context) }
+    DisposableEffect(controller) {
+        onDispose { controller.unbind() }
+    }
     val view = remember { PreviewView(context) }
     val scope = rememberCoroutineScope()
     var permission by remember {

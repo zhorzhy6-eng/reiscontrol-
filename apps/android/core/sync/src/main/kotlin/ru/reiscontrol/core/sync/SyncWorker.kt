@@ -13,6 +13,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.google.gson.JsonParser
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -29,6 +30,8 @@ import ru.reiscontrol.core.network.ApiService
 import ru.reiscontrol.core.network.AttachmentCommitRequest
 import ru.reiscontrol.core.network.AttachmentInitRequest
 import ru.reiscontrol.core.network.RefreshRequest
+import ru.reiscontrol.core.network.TrackDto
+import ru.reiscontrol.core.network.TracksRequest
 import ru.reiscontrol.core.security.SecureSession
 import java.io.File
 import java.io.IOException
@@ -86,10 +89,51 @@ class SyncWorker(context: Context, parameters: WorkerParameters) : CoroutineWork
                     retry = true
                     scheduleRetry(dao, item.clientEventId, item.attempts)
                     logger.record("warning", "sync.network_failed", event.clientEventId)
+                } catch (cancel: CancellationException) {
+                    throw cancel
                 } catch (error: Exception) {
                     retry = true
                     scheduleRetry(dao, item.clientEventId, item.attempts)
                     logger.record("error", "sync.unexpected", event.clientEventId)
+                }
+            }
+            for (track in dao.queuedTracks()) {
+                try {
+                    val response =
+                        authenticated(api, session) {
+                            api.tracks(
+                                TracksRequest(
+                                    listOf(
+                                        TrackDto(
+                                            trip_id = track.tripId,
+                                            recorded_at = track.recordedAt,
+                                            lat = track.lat,
+                                            lon = track.lon,
+                                            accuracy_m = track.accuracyM,
+                                            location_source = track.locationSource,
+                                        ),
+                                    ),
+                                ),
+                            )
+                        }
+                    if (response.accepted != 1) throw IOException("Unexpected track acknowledgement")
+                    dao.markTracksSent(listOf(track.id))
+                } catch (error: HttpException) {
+                    if (error.code() == 403 || error.code() == 422) {
+                        dao.markTrackRejected(track.id)
+                    } else {
+                        retry = true
+                        logger.record("error", "tracking.http_failed", track.id, mapOf("status_code" to error.code()))
+                    }
+                } catch (_: IOException) {
+                    retry = true
+                    logger.record("warning", "tracking.network_failed", track.id)
+                    break
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (_: Exception) {
+                    retry = true
+                    logger.record("error", "tracking.unexpected", track.id)
                 }
             }
         } finally {

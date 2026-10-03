@@ -15,11 +15,13 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:common"))
     implementation(project(":core:database"))
     implementation(project(":core:network"))
     implementation(project(":core:media"))
     implementation(project(":core:security"))
     implementation(project(":core:logging"))
+    implementation(project(":core:location"))
     implementation("androidx.room:room-runtime:2.7.2")
     implementation("com.google.code.gson:gson:2.11.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")

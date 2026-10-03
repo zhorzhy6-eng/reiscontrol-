@@ -17,9 +17,15 @@ import kotlin.coroutines.resumeWithException
 
 fun cameraFileName(id: UUID): String = "$id.jpg"
 
+fun isManagedCameraCapture(
+    cacheDir: File,
+    file: File,
+): Boolean = file.canonicalFile.parentFile == File(cacheDir, "camera").canonicalFile
+
 /** CameraX adapter; a feature decides when a driver explicitly starts capture. */
 class CameraController(private val context: Context) {
     private var imageCapture: ImageCapture? = null
+    private var cameraProvider: ProcessCameraProvider? = null
 
     suspend fun bind(
         owner: LifecycleOwner,
@@ -43,7 +49,14 @@ class CameraController(private val context: Context) {
         val capture = ImageCapture.Builder().build()
         provider.unbindAll()
         provider.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, preview, capture)
+        cameraProvider = provider
         imageCapture = capture
+    }
+
+    fun unbind() {
+        cameraProvider?.unbindAll()
+        cameraProvider = null
+        imageCapture = null
     }
 
     suspend fun capture(): File {

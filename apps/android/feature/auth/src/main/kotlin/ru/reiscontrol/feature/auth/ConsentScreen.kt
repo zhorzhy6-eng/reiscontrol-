@@ -41,6 +41,7 @@ fun ConsentScreen(
                 when (policy.type) {
                     "pd" -> "Обработка персональных данных"
                     "geo" -> "Геолокация для событий рейса"
+                    "tracking" -> "Периодический трекинг во время рейса"
                     else -> policy.type
                 }
             TextButton(onClick = {

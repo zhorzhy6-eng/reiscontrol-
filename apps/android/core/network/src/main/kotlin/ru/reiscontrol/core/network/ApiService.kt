@@ -76,6 +76,19 @@ data class EventResponse(val id: String, val state: String, val rejection_reason
 
 data class CompleteTripRequest(val track_number: String)
 
+data class TrackDto(
+    val trip_id: String,
+    val recorded_at: String,
+    val lat: Double,
+    val lon: Double,
+    val accuracy_m: Int,
+    val location_source: String,
+)
+
+data class TracksRequest(val tracks: List<TrackDto>)
+
+data class TracksResponse(val accepted: Int)
+
 interface ApiService {
     @POST("auth/login")
     suspend fun login(
@@ -136,4 +149,9 @@ interface ApiService {
         @Header("X-Trace-Id") traceId: String,
         @Body body: JsonObject,
     ): EventResponse
+
+    @POST("location/tracks")
+    suspend fun tracks(
+        @Body body: TracksRequest,
+    ): TracksResponse
 }

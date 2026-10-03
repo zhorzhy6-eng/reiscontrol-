@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
+import ru.reiscontrol.core.camera.isManagedCameraCapture
 import ru.reiscontrol.core.common.AppResult
 import ru.reiscontrol.core.common.newClientEventId
 import ru.reiscontrol.core.config.ConfiguredEventType
@@ -46,6 +47,7 @@ import ru.reiscontrol.core.rules.RequiredStep
 import ru.reiscontrol.core.rules.missingPhotos
 import ru.reiscontrol.core.security.SecureSession
 import ru.reiscontrol.core.sync.SyncScheduler
+import ru.reiscontrol.core.sync.TrackingScheduler
 import ru.reiscontrol.feature.auth.AcceptedConsent
 import ru.reiscontrol.feature.auth.ConsentPolicy
 import ru.reiscontrol.feature.auth.pendingConsents
@@ -88,6 +90,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         listOf(
             ConsentPolicy("pd", BuildConfig.POLICY_VERSION, BuildConfig.PD_POLICY_URL),
             ConsentPolicy("geo", BuildConfig.POLICY_VERSION, BuildConfig.GEO_POLICY_URL),
+            ConsentPolicy("tracking", BuildConfig.POLICY_VERSION, BuildConfig.TRACKING_POLICY_URL),
         )
     private val mutable = MutableStateFlow(AppUiState(screen = if (session.accessToken() == null) Screen.AUTH else Screen.CONSENTS))
     val state = mutable.asStateFlow()
@@ -134,7 +137,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         val pending = pendingConsents(policies, accepted)
         mutable.update { it.copy(pendingConsents = pending, screen = if (pending.isEmpty()) Screen.ORDERS else Screen.CONSENTS) }
-        if (pending.isEmpty()) fetchOrders()
+        if (pending.isEmpty()) {
+            TrackingScheduler.schedule(context, BuildConfig.POLICY_VERSION, BuildConfig.API_BASE_URL, BuildConfig.VERSION_NAME)
+            fetchOrders()
+        }
     }
 
     fun acceptConsents(checked: Set<String>) =
@@ -280,7 +286,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         val processed =
             withContext(Dispatchers.IO) {
-                media.process(uri, tripId, Instant.now(), fix.value.lat, fix.value.lon)
+                try {
+                    media.process(uri, tripId, Instant.now(), fix.value.lat, fix.value.lon)
+                } finally {
+                    if (source == "camera" && uri.scheme == "file") {
+                        uri.path?.let { path ->
+                            val capture = File(path)
+                            if (isManagedCameraCapture(context.cacheDir, capture)) capture.delete()
+                        }
+                    }
+                }
             }
         val previous = dao.attachmentForStep(eventId, stepCode)
         val attachment =
@@ -376,6 +391,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 database.clearAllTables()
             }
             session.clearTokens()
+            TrackingScheduler.cancel(context)
             mutable.update { AppUiState(screen = Screen.AUTH) }
         }
 
