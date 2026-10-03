@@ -1,1 +1,1 @@
-python-telegram-bot>=21,<23
+-r ../../backend/requirements.txt
