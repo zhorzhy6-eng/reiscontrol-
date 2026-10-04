@@ -22,11 +22,11 @@ $dbName = 'reiscontrol_stage1_' + [Guid]::NewGuid().ToString('N').Substring(0, 8
 docker compose exec -T postgres createdb -U $env:POSTGRES_USER $dbName
 $env:STAGE1_E2E_DATABASE_URL = $env:DATABASE_URL -replace '/[^/]+$', "/$dbName"
 $env:DATABASE_URL = $env:STAGE1_E2E_DATABASE_URL
-python -m alembic -c backend/migrations/alembic.ini upgrade head
-python -m alembic -c backend/migrations/alembic.ini check
-python -m pytest tests/e2e/test_stage1_live.py -q
+.\.venv\Scripts\python.exe -m alembic -c backend/migrations/alembic.ini upgrade head
+.\.venv\Scripts\python.exe -m alembic -c backend/migrations/alembic.ini check
+.\.venv\Scripts\python.exe -m pytest tests/e2e/test_stage1_live.py -q
 $env:REISCONTROL_ALLOW_DESTRUCTIVE_DOWNGRADE = '1'
-python -m alembic -c backend/migrations/alembic.ini downgrade base
+.\.venv\Scripts\python.exe -m alembic -c backend/migrations/alembic.ini downgrade base
 Remove-Item Env:REISCONTROL_ALLOW_DESTRUCTIVE_DOWNGRADE
 ```
 

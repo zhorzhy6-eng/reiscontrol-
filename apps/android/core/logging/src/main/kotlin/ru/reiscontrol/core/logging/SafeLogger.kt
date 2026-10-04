@@ -6,7 +6,8 @@ import com.google.gson.JsonObject
 import java.io.File
 import java.time.Instant
 
-private val allowedContext = setOf("event_type_code", "attachments_count", "status_code", "duration_ms")
+private val allowedContext =
+    setOf("event_type_code", "attachments_count", "status_code", "duration_ms", "exception_type", "exception_origin")
 private val safeCode = Regex("^[A-Za-z0-9_.:-]{1,100}$")
 
 fun safeLogJson(
@@ -26,6 +27,12 @@ fun safeLogJson(
     context.filterKeys { it in allowedContext }.forEach { (key, value) ->
         if (value is Number) safe.addProperty(key, value)
         if (key == "event_type_code" && value is String && Regex("^[A-Z0-9_]{1,50}$").matches(value)) {
+            safe.addProperty(key, value)
+        }
+        if (key == "exception_type" && value is String && Regex("^[A-Za-z][A-Za-z0-9]{0,79}$").matches(value)) {
+            safe.addProperty(key, value)
+        }
+        if (key == "exception_origin" && value is String && Regex("^[A-Za-z0-9_.$:<>-]{1,180}$").matches(value)) {
             safe.addProperty(key, value)
         }
     }

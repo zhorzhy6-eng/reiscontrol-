@@ -133,7 +133,7 @@ interface ApiService {
         @Path("id") id: String,
     ): JsonObject
 
-    @POST("attachments:init")
+    @POST("./attachments:init")
     suspend fun initAttachment(
         @Body body: AttachmentInitRequest,
     ): AttachmentInitResponse

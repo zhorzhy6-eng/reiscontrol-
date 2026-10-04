@@ -33,10 +33,12 @@ coverage/
 
 # Android / Gradle
 .gradle/
+.kotlin/
 **/build/
 local.properties
 *.apk
 *.aab
+hs_err_pid*.log
 
 # Apple / editors
 .DS_Store

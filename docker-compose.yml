@@ -17,9 +17,9 @@ services:
       retries: 12
 
   minio:
-    image: minio/minio:latest
+    # Community MinIO built from the official 2025-10-15 source; upstream images were removed.
+    image: soldevelo/minio:2025.10.15@sha256:0f8687550531a9eae9654a69e5f5afe0d96e3f16a6455367dfc53d766dc25f6d
     restart: unless-stopped
-    command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-reiscontrol_local}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-reiscontrol_local_secret}
@@ -27,10 +27,10 @@ services:
       - "127.0.0.1:9000:9000"
       - "127.0.0.1:9001:9001"
     volumes:
-      - minio_data:/data
+      - minio_data:/bitnami/minio/data
 
   minio-init:
-    image: minio/mc:latest
+    image: soldevelo/minio:2025.10.15@sha256:0f8687550531a9eae9654a69e5f5afe0d96e3f16a6455367dfc53d766dc25f6d
     depends_on:
       - minio
     restart: "no"
@@ -38,6 +38,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-reiscontrol_local}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-reiscontrol_local_secret}
       MINIO_BUCKET: ${MINIO_BUCKET:-reiscontrol}
+      MC_CONFIG_DIR: /tmp/mc
     entrypoint: >-
       /bin/sh -c '
       until mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do sleep 2; done;

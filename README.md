@@ -29,7 +29,7 @@ docker compose up -d
 docker compose ps
 ```
 
-Compose создаёт bucket `reiscontrol`. PostgreSQL доступен на `127.0.0.1:5432`, S3 API MinIO — на `http://127.0.0.1:9000`, консоль MinIO — на `http://127.0.0.1:9001`. Учётные данные для разработки указаны в `.env`; файл исключён из Git. Если меняете пароли или bucket, обновите также `DATABASE_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` и `OBJECT_STORAGE_BUCKET`.
+Compose создаёт bucket `reiscontrol`. PostgreSQL доступен на `127.0.0.1:5432`, S3 API MinIO — на `http://127.0.0.1:9000`, консоль MinIO — на `http://127.0.0.1:9001`. Образ MinIO закреплён по digest и собран сообществом из исходного кода релиза 2025-10-15: официальный образ больше недоступен в прежнем реестре. Учётные данные для разработки указаны в `.env`; файл исключён из Git. Если меняете пароли или bucket, обновите также `DATABASE_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` и `OBJECT_STORAGE_BUCKET`.
 
 Перед запуском каждого локального Python-процесса загрузите `.env` в **его** терминал:
 
@@ -39,13 +39,14 @@ Get-Content .env | ForEach-Object {
         Set-Item -Path "Env:$($Matches[1])" -Value $Matches[2]
     }
 }
-python -m pip install -r backend/requirements.txt
-python -m alembic -c backend/migrations/alembic.ini upgrade head
-python -m backend.infrastructure.postgres.seed
-python -m uvicorn backend.apps.api.main:app --host 127.0.0.1 --port 8000
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r backend/requirements.txt
+.\.venv\Scripts\python.exe -m alembic -c backend/migrations/alembic.ini upgrade head
+.\.venv\Scripts\python.exe -m backend.infrastructure.postgres.seed
+.\.venv\Scripts\python.exe -m uvicorn backend.apps.api.main:app --host 127.0.0.1 --port 8000
 ```
 
-В отдельных терминалах с загруженным `.env` запустите `python -m backend.apps.worker.outbox`, `python -m backend.apps.worker.devbot` и `python -m apps.telegram.bot`. Для ботов нужны реальные Telegram-токены и доступ к Telegram API. Связать чат с логистом: `python -m apps.telegram.subscribe <user_uuid> <chat_id>`.
+В отдельных терминалах с загруженным `.env` запустите `.\.venv\Scripts\python.exe -m backend.apps.worker.outbox`, `.\.venv\Scripts\python.exe -m backend.apps.worker.devbot` и `.\.venv\Scripts\python.exe -m apps.telegram.bot`. Для ботов нужны реальные Telegram-токены и доступ к Telegram API. Связать чат с логистом: `.\.venv\Scripts\python.exe -m apps.telegram.subscribe <user_uuid> <chat_id>`.
 
 Веб-кабинет запускается отдельно:
 
@@ -62,9 +63,9 @@ Vite перенаправляет `/api` на локальный backend `127.0.
 ## Проверки
 
 ```powershell
-python -m pytest tests
-python -m ruff check --config backend/pyproject.toml backend tests
-python -m black --check --config backend/pyproject.toml backend tests
+.\.venv\Scripts\python.exe -m pytest tests
+.\.venv\Scripts\python.exe -m ruff check --config backend/pyproject.toml backend tests
+.\.venv\Scripts\python.exe -m black --check --config backend/pyproject.toml backend tests
 ```
 
 Android: см. [apps/android/README.md](apps/android/README.md). Веб: см. [apps/web/README.md](apps/web/README.md).

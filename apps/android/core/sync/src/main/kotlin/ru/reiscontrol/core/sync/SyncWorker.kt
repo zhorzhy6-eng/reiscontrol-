@@ -14,6 +14,8 @@ import androidx.work.workDataOf
 import com.google.gson.JsonParser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -39,8 +41,16 @@ import java.util.concurrent.TimeUnit
 private const val API_URL = "api_url"
 private const val APP_VERSION = "app_version"
 
+internal object SyncGate {
+    private val mutex = Mutex()
+
+    suspend fun <T> run(block: suspend () -> T): T = mutex.withLock { block() }
+}
+
 class SyncWorker(context: Context, parameters: WorkerParameters) : CoroutineWorker(context, parameters) {
-    override suspend fun doWork(): Result {
+    override suspend fun doWork(): Result = SyncGate.run { sync() }
+
+    private suspend fun sync(): Result {
         val session = SecureSession(applicationContext)
         val apiUrl = inputData.getString(API_URL) ?: return Result.failure()
         val appVersion = inputData.getString(APP_VERSION) ?: return Result.failure()
@@ -93,7 +103,13 @@ class SyncWorker(context: Context, parameters: WorkerParameters) : CoroutineWork
                 } catch (error: Exception) {
                     retry = true
                     scheduleRetry(dao, item.clientEventId, item.attempts)
-                    logger.record("error", "sync.unexpected", event.clientEventId)
+                    val origin = error.stackTrace.firstOrNull()?.let { "${it.className}.${it.methodName}:${it.lineNumber}" }.orEmpty()
+                    logger.record(
+                        "error",
+                        "sync.unexpected",
+                        event.clientEventId,
+                        mapOf("exception_type" to error.javaClass.simpleName, "exception_origin" to origin),
+                    )
                 }
             }
             for (track in dao.queuedTracks()) {
