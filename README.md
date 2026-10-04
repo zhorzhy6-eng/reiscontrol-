@@ -6,6 +6,20 @@
 
 Нужны Docker с Compose, Python 3.12 и Node.js. PostgreSQL 16 и MinIO запускаются в Docker; API, воркеры, боты и веб-кабинет — как локальные процессы.
 
+На Windows перед запуском проверьте `docker version`: ответ должен содержать раздел
+`Server`. Если Docker Desktop пишет `WSL needs updating`, выполните в PowerShell
+**от имени администратора** `wsl --install --no-distribution`. Если Windows
+сообщает, что нужная служба не установлена, включите компоненты вручную:
+
+```powershell
+dism.exe /Online /Enable-Feature /FeatureName:Microsoft-Windows-Subsystem-Linux /All /NoRestart
+dism.exe /Online /Enable-Feature /FeatureName:VirtualMachinePlatform /All /NoRestart
+```
+
+После этого перезагрузите компьютер, выполните `wsl --update` и повторно
+запустите Docker Desktop.
+См. [инструкцию Microsoft](https://learn.microsoft.com/windows/wsl/install).
+
 В PowerShell из корня репозитория:
 
 ```powershell
@@ -54,6 +68,7 @@ python -m black --check --config backend/pyproject.toml backend tests
 ```
 
 Android: см. [apps/android/README.md](apps/android/README.md). Веб: см. [apps/web/README.md](apps/web/README.md).
+Проверка всей цепочки на одноразовой базе и MinIO: [tests/e2e/README.md](tests/e2e/README.md).
 
 ## Документы
 

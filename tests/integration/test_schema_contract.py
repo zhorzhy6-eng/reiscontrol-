@@ -4,8 +4,8 @@ import json
 import re
 from pathlib import Path
 
-import yaml
 import pytest
+import yaml
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateIndex, CreateTable

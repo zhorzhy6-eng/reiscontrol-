@@ -20,6 +20,11 @@ Kotlin/Compose, minSdk 26, compileSdk 35. `:app` связывает экраны
 bash ./gradlew ktlintCheck testDebugUnitTest :core:common:test :core:rules:test :app:assembleDebug
 ```
 
+В Windows PowerShell используйте `./gradlew.bat` с теми же аргументами. Укажите
+путь к SDK через `ANDROID_HOME` или файл `local.properties` с `sdk.dir=...`;
+`local.properties` не попадает в Git. Для теста на эмуляторе нужен запущенный
+backend и `adb reverse tcp:9000 tcp:9000` для presigned URL MinIO.
+
 APK: `app/build/outputs/apk/debug/app-debug.apk`. Debug-сборка обращается к `http://10.0.2.2:8000/api/v1/` в эмуляторе. Адрес production API задаётся через `API_BASE_URL` в `app/build.gradle.kts` до выпуска; примерный домен не предназначен для реального подключения.
 
 ## Модули
