@@ -1,185 +1,64 @@
-# Правила для ИИ-агента
+# AGENTS.md — правила для Codex в проекте «Рейс-Контроль»
 
-`Project/` — источник исходных документов только для чтения. Рабочие копии находятся в `docs/`; код и изменения создаются вне `Project/`.
+Я не программист. Объясняй простыми словами. Кратко, по делу. Не додумывай — спрашивай.
+Перед записью в файлы — показывай diff и жди команды «запиши».
 
-Этот файл — ключевой для работы ИИ-агента (Codex, Cursor, Claude Code) в этом репозитории.
+## Экономия токенов (критично)
 
----
+Ограничивай вывод любой команды: `КОМАНДА 2>&1 | head -c 4000`.
+Не читай `docs/01-requirements/`, `docs/02-architecture/`, `docs/06-schemas/` целиком без нужды.
+Читай только файлы, названные в задаче.
+Для архитектуры сначала смотри `ARCHITECTURE.md` (сжатая версия), не `docs/02-architecture/*.docx`.
+Для правил кода смотри `CONVENTIONS.md`, не `docs/`.
+Для ТЗ не открывай `.docx`/`.pdf` без явной необходимости — если нужно, бери только конкретный раздел.
 
-## Что читать перед началом работы
+## Где что лежит
 
-1. **`docs/01-requirements/`** — ТЗ v4.1. Что хочет заказчик.
-2. **`docs/02-architecture/`** — Архитектура v1.1. Как устроена система.
-3. **`docs/03-adr/`** — ADR-0001..0011. Ключевые решения.
-4. **`docs/04-db/`** — Схема БД. Таблицы, поля, связи.
-5. **`docs/05-api/openapi.yaml`** — Контракт API.
-6. **`docs/06-schemas/`** — JSON Schema примитивов.
-7. **`CONVENTIONS.md`** — правила кода.
-8. **`ROADMAP.md`** — что делаем сейчас.
+- Код и репозиторий: `F:\Driver App\`
+- Источник правды: `F:\Driver App\Project\` (Codex читает отсюда, пишет в корень)
+- Сжатая архитектура: `ARCHITECTURE.md`
+- Правила кода: `CONVENTIONS.md`
+- Рабочие docs: `docs/` | ADR: `docs/03-adr/` | Схема БД: `docs/04-db/schema.md`
+- API: `docs/05-api/openapi.yaml` | JSON Schema: `docs/06-schemas/`
+- Конфиги: `config/` | Миграции: `backend/migrations/`
+- GitHub: https://github.com/zhorzhy6-eng/reiscontrol-
 
----
+## Архитектурные решения — в ADR (читай по требованию)
 
-## Принципы работы
+Все 12 ADR лежат в `docs/03-adr/`. Читай только тот, который нужен для задачи.
 
-### 1. Не додумывай
+| Тема | ADR |
+|---|---|
+| PostgreSQL (не YDB) | `docs/03-adr/ADR-0001-postgresql.md` |
+| Append-only события + проекции | `docs/03-adr/ADR-0002-event-log.md` |
+| Config-as-data + snapshot на рейс | `docs/03-adr/ADR-0003-config-as-data.md` |
+| Офлайн-first, идемпотентность | `docs/03-adr/ADR-0004-offline-first.md` |
+| Время как набор атрибутов | `docs/03-adr/ADR-0005-time-attributes.md` |
+| Порты и адаптеры | `docs/03-adr/ADR-0006-ports-and-adapters.md` |
+| Двухфазная загрузка | `docs/03-adr/ADR-0007-two-phase-upload.md` |
+| Версионирование, expand/contract | `docs/03-adr/ADR-0008-versioning.md` |
+| JWT + refresh, PIN | `docs/03-adr/ADR-0009-auth.md` |
+| Оператор ПДн | `docs/03-adr/ADR-0010-pd-operator.md` |
+| Логирование | `docs/03-adr/ADR-0011-logging.md` |
+| Партиционирование отложено | `docs/03-adr/ADR-0012-deferred-partitioning.md` |
 
-Если чего-то нет в документах — **спроси**, не придумывай.
-
-**Плохо:** «Я решил использовать MongoDB вместо PostgreSQL».
-**Хорошо:** «В ADR-0001 выбрана PostgreSQL. Использую её».
-
-### 2. Не хардкодь
-
-Конфигурация — в БД. Типы событий — в `event_types`. Чек-листы — в `checklist_steps`.
-
-**Плохо:** `EVENT_TYPES = ["LOADING", "UNLOADING", "PARKING"]`.
-**Хорошо:** `event_types` — таблица в БД.
-
-### 3. Следуй слоям
-
-```
-apps → application → domain
-infrastructure → application/domain
-```
-
-`domain` не знает ни про SQL, ни про HTTP.
-
-### 4. Пиши тесты
-
-Новый код — новый тест. Без тестов PR не принимается.
-
-### 5. Логируй
-
-Структурированные JSON-логи. См. ADR-0011.
-
-**Плохо:** `print("Event accepted")`.
-**Хорошо:** `logger.info("Event accepted", extra={"event_id": ..., "trace_id": ...})`.
-
-### 6. Не логируй ПДн
-
-Никаких ФИО, телефонов, номеров ВУ, координат, токенов в логах.
-
-### 7. Идемпотентность
-
-Все операции с событиями — идемпотентны. `client_event_id` + `(client_event_id, device_id)`.
-
-### 8. Аддитивность
-
-API: только добавление полей. Удаление — через депрекацию.
-
-### 9. Expand/contract
-
-Миграции БД — только через expand/contract. Никаких big bang.
-
-### 10. Офлайн-first
-
-Клиент — источник истины для фактов. Сервер — для справочников и конфигов.
-
-### 11. Мультиплатформенность
-
-API не привязан к платформе. Android и iOS используют один `openapi.yaml`. Заголовок `X-Platform`.
-
-### 12. Галерея разрешена
-
-В `photo_set` — `allow_gallery: true` по умолчанию. Причина не запрашивается. Источник фиксируется: `camera` / `gallery`.
-
----
+Если задача касается архитектуры, БД, API, безопасности или логирования,
+но неясно какой ADR применим — остановись и спроси. Не додумывай.
 
 ## Запреты
 
-| ❌ Запрещено | Почему |
-|---|---|
-| Использовать YDB | ADR-0001: PostgreSQL |
-| Использовать `FusedLocationProvider` напрямую | ADR-0006: порт LocationProvider |
-| Хардкодить типы событий | ADR-0003: config-as-data |
-| `UPDATE` поверх accepted-событий | ADR-0002: append-only |
-| Big bang миграции | ADR-0008: expand/contract |
-| Принудительное обновление без ADR | ADR-0008 |
-| Логировать ПДн | ADR-0010 |
-| Секреты в коде | ADR-0009: Lockbox |
-| `print()` вместо логирования | ADR-0011 |
-| `except Exception: pass` | CONVENTIONS |
-| Смешивать слои (`domain` → `infra`) | Архитектура |
-| Привязывать API к платформе | Android и iOS используют один API |
-| Хардкод канала обновления | `direct` / `rustore` / `testflight` / `appstore` — в `app_releases` |
-| Постоянный GPS-трекинг | ТЗ п. 12 исключает |
-| Трекинг вне рейса | ADR-0010: только во время рейса |
+❌ YDB | ❌ хардкод типов событий | ❌ `UPDATE` поверх accepted-событий
+❌ big bang миграции | ❌ логировать ПДн, координаты, токены
+❌ секреты в коде и выводе | ❌ `print()` вместо логирования
+❌ `except Exception: pass` | ❌ смешивать слои | ❌ RuStore
 
----
+## Стек и запуск
 
-## Как работать с итерациями
+Python (ruff+black), Kotlin (ktlint), TypeScript (eslint+prettier).
+Локально: `docker-compose.yml` + `scripts/Start-Local.ps1`. Переезд: `docs/migration-to-server.md`.
+`@reiscontrol_main_bot` — логист, отвечает на `/start`. `@reiscontrol_devbot` — worker, не отвечает.
 
-**Одна итерация = один проверяемый результат.**
+## Тесты
 
-**Плохо:** «Напиши весь backend».
-**Хорошо:** «Напиши auth + orders + events с тестами и критериями приёмки».
-
-### Формат работы
-
-1. Прочитай ТЗ + архитектуру + релевантные ADR.
-2. Спроси, если что-то неясно.
-3. Напиши код.
-4. Напиши тесты.
-5. Запусти тесты.
-6. Проверь линтеры.
-7. Сделай коммит по CONVENTIONS.
-
----
-
-## Что делать при неясности
-
-**Спроси, не додумывай.**
-
-Примеры вопросов:
-- «В ADR-0004 не указан формат `client_event_id`. Использовать UUIDv7?»
-- «В схеме БД нет таблицы `user_consents`. Добавить?»
-
----
-
-## Что делать при конфликте документов
-
-**Приоритет:**
-1. ADR (последнее решение).
-2. Архитектура.
-3. ТЗ.
-4. «Уточнения к ТЗ».
-
-**Если конфликт не разрешается** — спроси.
-
----
-
-## Полезные ссылки
-
-- **ТЗ:** `docs/01-requirements/` — версия 4.1
-- **Архитектура:** `docs/02-architecture/` — версия 1.1
-- **ADR:** `docs/03-adr/`
-- **Схема БД:** `docs/04-db/`
-- **API:** `docs/05-api/openapi.yaml`
-- **JSON Schema:** `docs/06-schemas/`
-- **Правила кода:** `CONVENTIONS.md`
-- **Дорожная карта:** `ROADMAP.md`
-
----
-
-## Пример хорошего промпта
-
-> Прочитай `docs/01-requirements/` (ТЗ v4.1), `docs/02-architecture/` (Архитектура v1.1), `docs/03-adr/ADR-0004-offline-first.md`. Напиши модуль `domain/events` с функциями:
-> - `create_event(...)`
-> - `accept_event(...)`
-> - `reject_event(...)`
->
-> Требования:
-> - идемпотентность по `client_event_id`;
-> - append-only (никаких UPDATE);
-> - тесты в `tests/unit/domain/test_events.py`;
-> - логирование через `logger.info`.
->
-> Критерий приёмки: тесты проходят, линтеры зелёные.
-
----
-
-## Пример плохого промпта
-
-> Напиши backend для логистики.
-
-**Почему плохо:** нет контекста, нет критериев, нет ограничений.
+Новый код — новый тест. Идемпотентность: `(client_event_id, device_id)`, UUIDv7.
+Миграции — только expand/contract. Downgrade — только с `REISCONTROL_ALLOW_DESTRUCTIVE_DOWNGRADE=1`.
