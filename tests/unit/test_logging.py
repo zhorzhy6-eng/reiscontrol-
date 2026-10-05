@@ -3,7 +3,7 @@
 import json
 import logging
 
-from backend.apps.api.logging_config import JsonFormatter
+from backend.apps.api.logging_config import JsonFormatter, configure_json_logging
 
 
 def test_json_formatter_omits_unapproved_context_fields():
@@ -22,3 +22,8 @@ def test_json_formatter_omits_unapproved_context_fields():
     assert payload["trace_id"] == "trace-1"
     assert payload["context"] == {"status_code": 200}
     assert "phone" not in json.dumps(payload)
+
+
+def test_httpx_info_logs_are_suppressed_to_protect_bot_tokens():
+    configure_json_logging(service="worker")
+    assert not logging.getLogger("httpx").isEnabledFor(logging.INFO)

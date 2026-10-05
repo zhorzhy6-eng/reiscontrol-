@@ -46,3 +46,5 @@ def configure_json_logging(*, service: str, level: str = "INFO") -> None:
     handler = logging.StreamHandler()
     handler.setFormatter(JsonFormatter(service))
     logging.basicConfig(level=level.upper(), handlers=[handler], force=True)
+    # httpx includes the full Telegram Bot API URL, including its token, at INFO.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
