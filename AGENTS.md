@@ -1,64 +1,59 @@
 # AGENTS.md — правила для Codex в проекте «Рейс-Контроль»
 
-Я не программист. Объясняй простыми словами. Кратко, по делу. Не додумывай — спрашивай.
-Перед записью в файлы — показывай diff и жди команды «запиши».
+Я не программист. Объясняй простыми словами. Кратко. Не додумывай — спрашивай.
+Работай автономно: читай, пиши, тестируй, коммить сам. Показывай diff и жди
+«запиши» только перед опасным: удаление, миграции БД, .env, git push, ADR.
 
 ## Экономия токенов (критично)
 
-Ограничивай вывод любой команды: `КОМАНДА 2>&1 | head -c 4000`.
-Не читай `docs/01-requirements/`, `docs/02-architecture/`, `docs/06-schemas/` целиком без нужды.
+Любую команду ограничивай: `КОМАНДА 2>&1 | head -c 4000`.
 Читай только файлы, названные в задаче.
-Для архитектуры сначала смотри `ARCHITECTURE.md` (сжатая версия), не `docs/02-architecture/*.docx`.
-Для правил кода смотри `CONVENTIONS.md`, не `docs/`.
-Для ТЗ не открывай `.docx`/`.pdf` без явной необходимости — если нужно, бери только конкретный раздел.
+Архитектура — `ARCHITECTURE.md`, не `docs/02-architecture/*.docx`.
+Правила кода — `CONVENTIONS.md`.
+ТЗ — не открывать `.docx`/`.pdf` без явной необходимости.
 
 ## Где что лежит
 
-- Код и репозиторий: `F:\Driver App\`
-- Источник правды: `F:\Driver App\Project\` (Codex читает отсюда, пишет в корень)
-- Сжатая архитектура: `ARCHITECTURE.md`
-- Правила кода: `CONVENTIONS.md`
-- Рабочие docs: `docs/` | ADR: `docs/03-adr/` | Схема БД: `docs/04-db/schema.md`
-- API: `docs/05-api/openapi.yaml` | JSON Schema: `docs/06-schemas/`
+- Код: `F:\Driver App\` | Источник правды: `F:\Driver App\Project\`
+- Архитектура: `ARCHITECTURE.md` | Правила кода: `CONVENTIONS.md`
+- ADR: `docs/03-adr/` | API: `docs/05-api/openapi.yaml`
+- Схемы payload: `docs/06-schemas/`
 - Конфиги: `config/` | Миграции: `backend/migrations/`
-- GitHub: https://github.com/zhorzhy6-eng/reiscontrol-
 
-## Архитектурные решения — в ADR (читай по требованию)
+## Схема БД
 
-Все 12 ADR лежат в `docs/03-adr/`. Читай только тот, который нужен для задачи.
+Описание схемы — `docs/04-db/schema.md`. Читай **только если задача прямо
+касается структуры таблиц**: добавить колонку, изменить индекс, написать
+миграцию, разобраться со связью между таблицами.
+Не читай схему «на всякий случай» и не читай её целиком — только нужный раздел.
+Код схемы (источник правды) — `backend/infrastructure/postgres/models.py`.
 
-| Тема | ADR |
-|---|---|
-| PostgreSQL (не YDB) | `docs/03-adr/ADR-0001-postgresql.md` |
-| Append-only события + проекции | `docs/03-adr/ADR-0002-event-log.md` |
-| Config-as-data + snapshot на рейс | `docs/03-adr/ADR-0003-config-as-data.md` |
-| Офлайн-first, идемпотентность | `docs/03-adr/ADR-0004-offline-first.md` |
-| Время как набор атрибутов | `docs/03-adr/ADR-0005-time-attributes.md` |
-| Порты и адаптеры | `docs/03-adr/ADR-0006-ports-and-adapters.md` |
-| Двухфазная загрузка | `docs/03-adr/ADR-0007-two-phase-upload.md` |
-| Версионирование, expand/contract | `docs/03-adr/ADR-0008-versioning.md` |
-| JWT + refresh, PIN | `docs/03-adr/ADR-0009-auth.md` |
-| Оператор ПДн | `docs/03-adr/ADR-0010-pd-operator.md` |
-| Логирование | `docs/03-adr/ADR-0011-logging.md` |
-| Партиционирование отложено | `docs/03-adr/ADR-0012-deferred-partitioning.md` |
+## ADR
 
-Если задача касается архитектуры, БД, API, безопасности или логирования,
-но неясно какой ADR применим — остановись и спроси. Не додумывай.
+Все 12 ADR — в `docs/03-adr/`, по одному файлу на решение.
+Открывай **только тот ADR, который прямо нужен для задачи**. Остальные не читай.
+Если задача про архитектуру, БД, API или логирование, но непонятно какой ADR
+применим — остановись и спроси.
+
+- 01 PostgreSQL (не YDB) · 02 Event log · 03 Config-as-data
+- 04 Offline-first · 05 Time-attributes · 06 Ports-and-adapters
+- 07 Two-phase upload · 08 Versioning · 09 Auth
+- 10 PD-operator · 11 Logging · 12 Deferred-partitioning
 
 ## Запреты
 
-❌ YDB | ❌ хардкод типов событий | ❌ `UPDATE` поверх accepted-событий
-❌ big bang миграции | ❌ логировать ПДн, координаты, токены
-❌ секреты в коде и выводе | ❌ `print()` вместо логирования
-❌ `except Exception: pass` | ❌ смешивать слои | ❌ RuStore
+❌ YDB · хардкод типов событий · `UPDATE` поверх accepted-событий
+❌ big bang миграции · логировать ПДн/координаты/токены
+❌ секреты в коде и выводе · `print()` вместо логирования
+❌ `except Exception: pass` · смешивать слои · RuStore
 
 ## Стек и запуск
 
 Python (ruff+black), Kotlin (ktlint), TypeScript (eslint+prettier).
-Локально: `docker-compose.yml` + `scripts/Start-Local.ps1`. Переезд: `docs/migration-to-server.md`.
-`@reiscontrol_main_bot` — логист, отвечает на `/start`. `@reiscontrol_devbot` — worker, не отвечает.
+Локально: `docker-compose.yml` + `scripts/Start-Local.ps1`.
+`@reiscontrol_main_bot` — логист. `@reiscontrol_devbot` — worker, не отвечает.
 
 ## Тесты
 
 Новый код — новый тест. Идемпотентность: `(client_event_id, device_id)`, UUIDv7.
-Миграции — только expand/contract. Downgrade — только с `REISCONTROL_ALLOW_DESTRUCTIVE_DOWNGRADE=1`.
+Миграции — expand/contract. Downgrade — только с `REISCONTROL_ALLOW_DESTRUCTIVE_DOWNGRADE=1`.
